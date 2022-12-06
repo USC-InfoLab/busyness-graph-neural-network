@@ -64,6 +64,7 @@ parser.add_argument('--is_wandb_used', type=bool, default=False)
 # parser.add_argument("--gpu_devices", type=int, nargs='+', default=0, help="")
 parser.add_argument('--start_poi', type=int, default=0)
 parser.add_argument('--end_poi', type=int, default=5)
+parser.add_argument('--node_features', type=int, default=1)
 parser.add_argument('--model', type=str, default='A3TGCN')
 
 
@@ -112,7 +113,7 @@ def main():
         try:
             before_train = datetime.now().timestamp()
             _, normalize_statistic = train(wandb_logger, train_dataset, valid_dataset,
-                                           args, result_train_file)
+                                           args, result_train_file, model_name=args.model)
             after_train = datetime.now().timestamp()
             print(f'Training took {(after_train - before_train) / 60} minutes')
         except KeyboardInterrupt:
