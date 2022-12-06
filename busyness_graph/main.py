@@ -62,7 +62,7 @@ parser.add_argument('--leakyrelu_rate', type=int, default=0.2)
 parser.add_argument('--is_wandb_used', type=bool, default=True)
 parser.add_argument("--gpu_devices", type=int, nargs='+', default=0, help="")
 parser.add_argument('--start_poi', type=int, default=0)
-parser.add_argument('--end_poi', type=int, default=10)
+parser.add_argument('--end_poi', type=int, default=400)
 
 
 args = parser.parse_args()
