@@ -4,6 +4,7 @@ import time, os, math
 from scipy.signal import savgol_filter
 import ast
 
+
 class bounding_box:
     def __init__(self, _lat_min, _lon_min, _lat_max, _lon_max):
         self.lat_min = _lat_min
@@ -69,3 +70,27 @@ def get_full_df(csv_path_weekly, poi_info_csv_path, start_row, end_row, total_da
     poi_df.drop(poi_df.filter(regex='_y$').columns, axis=1, inplace=True)
     del poi_db
     return poi_df
+
+
+def get_split_data(city, args):
+    csv_path = f'/home/users/arash/datasets/safegraph/weekly_patterns_2019-01-07_2020-06-08_{city}.csv'
+    poi_info_csv_path = '/home/users/arash/datasets/safegraph/core_poi_info_2019-01-07_2020-06-08.csv'
+    
+    df = get_full_df(csv_path_weekly=csv_path, 
+                         poi_info_csv_path=poi_info_csv_path, 
+                         start_row=args.start_poi, end_row=args.end_poi, 
+                         total_days=args.total_days,
+                         city=city)
+    
+    
+    data= pd.DataFrame(df["visits_by_each_hour"].to_list()).T
+    days = int(data.shape[0] / 24)
+    train_days = int(args.train_ratio * days)
+    valid_days = int(days*args.valid_ratio)
+    test_days = days-train_days-valid_days
+    
+    train_data = data[:train_days*24].to_numpy()
+    valid_data = data[train_days*24:(train_days + valid_days)*24].to_numpy()
+    test_data = data[(train_days + valid_days)*24:(train_days + valid_days+test_days)*24].to_numpy()
+    
+    return train_data, valid_data, test_data, df

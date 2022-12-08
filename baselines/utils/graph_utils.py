@@ -5,9 +5,8 @@ import urllib.request
 import zipfile
 
 from torch_geometric.utils import dense_to_sparse
-from torch_geometric_temporal.signal import StaticGraphTemporalSignal
+from torch_geometric_temporal.signal import StaticGraphTemporalSignal, StaticGraphTemporalSignalBatch
 
-from utils.data_utils import get_full_df
 
 def get_distances(coords):
     num_points = coords.shape[0]
@@ -28,7 +27,7 @@ def get_unsqueezed(arr):
     nodes_num = arr.shape[-1]
     res = arr.copy()
     res = np.expand_dims(arr, 2)
-    res = res.reshape((nodes_num, 1, time_points))
+    res = res.reshape((time_points, 1, nodes_num))
     return res
 
 
@@ -38,6 +37,40 @@ def z_normalize(arr):
     stds = np.std(res, axis=(0, 2))
     res = res / stds.reshape(1, -1, 1)
     return res
+
+
+def normalize(data, norm_method, norm_statistic):
+    if norm_method == 'min_max':
+        if not norm_statistic:
+            norm_statistic = dict(max=np.max(data, axis=0), min=np.min(data, axis=0))
+        scale = np.array(['max']) - norm_statistic['min'] + 1e-5
+        data = (data - norm_statistic['min']) / scale
+        data = np.clip(data, 0.0, 1.0)
+    elif norm_method == 'z_score':
+        if not norm_statistic:
+            norm_statistic = dict(mean=np.mean(data, axis=0), std=np.std(data, axis=0))
+        mean = norm_statistic['mean']
+        std = norm_statistic['std']
+        std = [1 if i == 0 else i for i in std]
+        data = (data - mean) / std
+        norm_statistic['std'] = std
+    return data, norm_statistic
+
+
+def de_normalize(data, normalize_method, norm_statistic):
+    if normalize_method == 'min_max':
+        if not norm_statistic:
+            norm_statistic = dict(max=np.max(data, axis=0), min=np.min(data, axis=0))
+        scale = np.array(norm_statistic['max']) - norm_statistic['min'] + 1e-5
+        data = data * scale + norm_statistic['min']
+    elif normalize_method == 'z_score':
+        if not norm_statistic:
+            norm_statistic = dict(mean=np.mean(data, axis=0), std=np.std(data, axis=0))
+        mean = norm_statistic['mean']
+        std = norm_statistic['std']
+        std = [1 if i == 0 else i for i in std]
+        data = data * std + mean
+    return data
 
 
 def to_graph_dataset(arr, adj_mat, num_timesteps_in, num_timesteps_out):
@@ -91,24 +124,39 @@ def get_graph_dataset(df, train_ratio, valid_ratio, window_size, horizon):
     
     return train_graph_dataset, valid_graph_dataset, test_graph_dataset
 
+
+def get_adj_mat(df):
+    coords = df[['latitude', 'longitude']].to_numpy()
+    distances = get_distances(coords)
+    thres = np.nanmean(distances)
+    adj_mat = gaussian_kern(distances, thres=thres)
+    return adj_mat
+
         
-
-
-def get_datasets(city):
-    csv_path = f'/home/users/arash/datasets/safegraph/weekly_patterns_2019-01-07_2020-06-08_{city}.csv'
-    poi_info_csv_path = '/home/users/arash/datasets/safegraph/core_poi_info_2019-01-07_2020-06-08.csv'
+def get_graph_dataset(arr, adj_mat, num_timesteps_in, num_timesteps_out,
+                      norm_method=None, norm_stats=None):
+    # norm_arr = get_unsqueezed(arr)
+    if norm_method:
+        norm_arr, _ = normalize(arr, norm_method, norm_stats)
+    A = torch.from_numpy(adj_mat)
+    X = torch.from_numpy(get_unsqueezed(norm_arr))
+    X = X.permute(2, 1, 0)
+    edge_indices, values = dense_to_sparse(A)
+    edges = edge_indices.numpy()
+    edge_weights = values.numpy()
     
-    df = get_full_df(csv_path_weekly=csv_path, 
-                         poi_info_csv_path=poi_info_csv_path, 
-                         start_row=args.start_poi, end_row=args.end_poi, 
-                         total_days=TOTAL_DAYS,
-                         city=city)
+    indices = [
+    (i, i + (num_timesteps_in + num_timesteps_out))
+    for i in range(X.shape[2] - (num_timesteps_in + num_timesteps_out) + 1)
+    ]
     
-    train_dataset, valid_dataset, test_datset = get_graph_dataset(
-        df=df,
-        train_ratio=args.train_ratio,
-        valid_ratio=args.valid_ratio,
-        window_size=args.window_size,
-        horizon=args.horizon
+    features, target = [], []
+    for i, j in indices:
+        features.append((X[:, :, i : i + num_timesteps_in]).numpy())
+        target.append((X[:, 0, i + num_timesteps_in : j]).numpy())
+    
+    dataset = StaticGraphTemporalSignal(
+    edges, edge_weights, features, target
     )
-    return train_dataset, valid_dataset, test_datset
+    
+    return dataset

@@ -59,10 +59,10 @@ parser.add_argument('--exponential_decay_step', type=int, default=5)
 parser.add_argument('--decay_rate', type=float, default=0.5)
 parser.add_argument('--dropout_rate', type=float, default=0.5)
 parser.add_argument('--leakyrelu_rate', type=int, default=0.2)
-parser.add_argument('--is_wandb_used', type=bool, default=True)
+parser.add_argument('--is_wandb_used', type=bool, default=False)
 parser.add_argument("--gpu_devices", type=int, nargs='+', default=0, help="")
 parser.add_argument('--start_poi', type=int, default=0)
-parser.add_argument('--end_poi', type=int, default=400)
+parser.add_argument('--end_poi', type=int, default=10)
 
 
 args = parser.parse_args()
@@ -130,7 +130,7 @@ test_days = days-train_days-valid_days
 
 train_data = data[:train_days*24]
 valid_data = data[train_days*24:(train_days + valid_days)*24]
-test_data = data[(train_days + valid_days)*24:(train_days + valid_days+test_days)*24 ]
+test_data = data[(train_days + valid_days)*24:(train_days + valid_days+test_days)*24]
 
 # TODO: Should I keep this (indexes for categorical variables)
 cat_codes_dict = get_cat_codes(data_frame, CAT_COLS)

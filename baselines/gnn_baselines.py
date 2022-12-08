@@ -13,8 +13,8 @@ import wandb
 
 from models.handler import train, test
 
-from utils.data_utils import get_full_df
-from utils.graph_utils import get_graph_dataset
+from utils.data_utils import get_full_df, get_split_data
+from utils.graph_utils import get_graph_dataset, get_adj_mat
 
 from utils.math_utils import WandbLogger
 
@@ -23,7 +23,6 @@ from models.gnn_models import A3TGCN_Temporal
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 SEED = 117 # John-117 :>
-TOTAL_DAYS = 400
 
 random.seed(SEED)
 np.random.seed(SEED)
@@ -64,6 +63,7 @@ parser.add_argument('--is_wandb_used', type=bool, default=False)
 # parser.add_argument("--gpu_devices", type=int, nargs='+', default=0, help="")
 parser.add_argument('--start_poi', type=int, default=0)
 parser.add_argument('--end_poi', type=int, default=5)
+parser.add_argument('--total_days', type=int, default=400)
 parser.add_argument('--node_features', type=int, default=1)
 parser.add_argument('--model', type=str, default='A3TGCN')
 
@@ -88,7 +88,7 @@ def get_datasets(city):
     df = get_full_df(csv_path_weekly=csv_path, 
                          poi_info_csv_path=poi_info_csv_path, 
                          start_row=args.start_poi, end_row=args.end_poi, 
-                         total_days=TOTAL_DAYS,
+                         total_days=args.total_days,
                          city=city)
     
     train_dataset, valid_dataset, test_datset = get_graph_dataset(
@@ -103,7 +103,8 @@ def get_datasets(city):
 
 
 def main():
-    train_dataset, valid_dataset, test_dataset = get_datasets(args.dataset)
+    train_data, valid_data, test_data, df = get_split_data(args.dataset, args)
+    adj_mat = get_adj_mat(df)
     run_name = f'{args.dataset}-{args.model}-{str(datetime.now().strftime("%Y-%m-%d %H:%M"))}'
     
     wandb_logger = WandbLogger("POI_forecast_baselines", args.is_wandb_used, run_name)
@@ -112,7 +113,7 @@ def main():
     if args.train:
         try:
             before_train = datetime.now().timestamp()
-            _, normalize_statistic = train(wandb_logger, train_dataset, valid_dataset,
+            _, normalize_statistic = train(wandb_logger, train_data, valid_data, adj_mat,
                                            args, result_train_file, model_name=args.model)
             after_train = datetime.now().timestamp()
             print(f'Training took {(after_train - before_train) / 60} minutes')
@@ -121,7 +122,7 @@ def main():
             print('Exiting from training early')
     if args.evaluate:
         before_evaluation = datetime.now().timestamp()
-        test(wandb_logger, test_dataset, args, result_train_file, result_test_file)
+        test(wandb_logger, test_data, args, result_train_file, result_test_file)
         after_evaluation = datetime.now().timestamp()
         print(f'Evaluation took {(after_evaluation - before_evaluation) / 60} minutes')
     print('done')
