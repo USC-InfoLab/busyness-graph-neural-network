@@ -9,7 +9,7 @@ import numpy as np
 import time
 import os
 
-from models.gnn_models import A3TGCN_Temporal
+from models.gnn_models import A3TGCN_Temporal, DCRNN_Temporal, GConvGRU_Temporal
 from utils.graph_utils import get_graph_dataset, de_normalize
 from utils.math_utils import evaluate
 
@@ -17,17 +17,36 @@ from utils.math_utils import evaluate
 def get_model(model_name):
     if model_name == 'A3TGCN':
         return A3TGCN_Temporal
+    if model_name == 'DCRNN':
+        return DCRNN_Temporal
+    if model_name == 'ConvGRU':
+        return GConvGRU_Temporal
+        
     
     
-def save_model(model, model_dir, epoch=None):
+def save_model(model, model_dir, model_name, epoch=None):
     if model_dir is None:
         return
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
     epoch = str(epoch) if epoch else ''
-    file_name = os.path.join(model_dir, epoch + '_stemgnn.pt')
+    file_name = os.path.join(model_dir, epoch + f'{model_name}.pt')
     with open(file_name, 'wb') as f:
         torch.save(model, f)
+        
+
+def load_model(model_dir, model_name, epoch=None):
+    if not model_dir:
+        return
+    epoch = str(epoch) if epoch else ''
+    file_name = os.path.join(model_dir, epoch + f'{model_name}.pt')
+    if not os.path.exists(model_dir):
+        os.makedirs(model_dir)
+    if not os.path.exists(file_name):
+        return
+    with open(file_name, 'rb') as f:
+        model = torch.load(f)
+    return model
 
 
 def inference(model, dataset, device, window_size, horizon):
@@ -180,7 +199,7 @@ def train(wandb_logger, train_data, valid_data, adj_mat, args, result_file, mode
         time.time() - epoch_start_time), loss_total / cnt))
         wandb_logger.log("train_total_loss", loss_total / cnt,epoch)
         
-        save_model(model, result_file, epoch)
+        save_model(model, result_file, model_name, epoch)
         
         if (epoch+1) % args.exponential_decay_step == 0:
             my_lr_scheduler.step()
@@ -190,9 +209,39 @@ def train(wandb_logger, train_data, valid_data, adj_mat, args, result_file, mode
             performance_metrics = \
                             validate(model, valid_set, args.device, args.norm_method, normalize_statistic, args.window_size, args.horizon,
                             result_file=result_file)
-    
-    return 'no', 'data'
+            
+            wandb_logger.log("val_mae", performance_metrics['mae'],epoch)
+            wandb_logger.log("val_mape",  performance_metrics['mape'], epoch)
+            wandb_logger.log("val_rmse", performance_metrics['rmse'], epoch)
+            if best_validate_mae > performance_metrics['mae']:
+                best_validate_mae = performance_metrics['mae']
+                is_best_for_now = True
+                validate_score_non_decrease_count = 0
+            else:
+                validate_score_non_decrease_count += 1
+            # save model
+            if is_best_for_now:
+                save_model(model, result_file, model_name)
+        # early stop
+        if args.early_stop and validate_score_non_decrease_count >= args.early_stop_step:
+            break
+    return performance_metrics, normalize_statistic
 
 
-def test(wandb_logger,test_data, args, result_train_file, result_test_file):
+def test(wandb_logger, test_data, adj_mat, args, result_train_file, result_test_file, model_name):
     print('testing...')
+    with open(os.path.join(result_train_file, 'norm_stat.json'),'r') as f:
+        normalize_statistic = json.load(f)
+    model = load_model(result_train_file, model_name)
+    test_set = get_graph_dataset(test_data, adj_mat, 
+                                  args.window_size, args.horizon,
+                                  args.norm_method, normalize_statistic)
+    performance_metrics = validate(model, test_set, args.device,
+                                args.norm_method, normalize_statistic, 
+                                args.window_size, args.horizon,
+                                result_file=result_test_file)
+    mae, mape, rmse = performance_metrics['mae'], performance_metrics['mape'], performance_metrics['rmse']
+    wandb_logger.log("test_mae", mae, 0)
+    wandb_logger.log("test_mape", mape, 0)
+    wandb_logger.log("test_rmse", rmse, 0)
+    print('Performance on test set: MAPE: {:5.2f} | MAE: {:5.2f} | RMSE: {:5.4f}'.format(mape, mae, rmse))

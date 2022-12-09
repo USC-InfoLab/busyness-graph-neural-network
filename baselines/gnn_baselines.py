@@ -37,6 +37,10 @@ torch.backends.cudnn.deterministic = True
 #     New York
 #     San Antonio
 
+# Available models:
+#     A3TGCN
+#     DCRNN
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--train', type=bool, default=True)
 parser.add_argument('--evaluate', type=bool, default=True)
@@ -59,13 +63,13 @@ parser.add_argument('--exponential_decay_step', type=int, default=5)
 parser.add_argument('--decay_rate', type=float, default=0.5)
 # parser.add_argument('--dropout_rate', type=float, default=0.5)
 # parser.add_argument('--leakyrelu_rate', type=int, default=0.2)
-parser.add_argument('--is_wandb_used', type=bool, default=False)
+parser.add_argument('--is_wandb_used', type=bool, default=True)
 # parser.add_argument("--gpu_devices", type=int, nargs='+', default=0, help="")
 parser.add_argument('--start_poi', type=int, default=0)
-parser.add_argument('--end_poi', type=int, default=5)
+parser.add_argument('--end_poi', type=int, default=400)
 parser.add_argument('--total_days', type=int, default=400)
 parser.add_argument('--node_features', type=int, default=1)
-parser.add_argument('--model', type=str, default='A3TGCN')
+parser.add_argument('--model', type=str, default='ConvGRU')
 
 
 args = parser.parse_args()
@@ -122,7 +126,7 @@ def main():
             print('Exiting from training early')
     if args.evaluate:
         before_evaluation = datetime.now().timestamp()
-        test(wandb_logger, test_data, args, result_train_file, result_test_file)
+        test(wandb_logger, test_data, adj_mat, args, result_train_file, result_test_file, model_name=args.model)
         after_evaluation = datetime.now().timestamp()
         print(f'Evaluation took {(after_evaluation - before_evaluation) / 60} minutes')
     print('done')
