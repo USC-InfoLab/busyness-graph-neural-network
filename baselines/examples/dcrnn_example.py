@@ -38,7 +38,7 @@ model.train()
 for epoch in tqdm(range(200)):
     cost = 0
     for time, snapshot in enumerate(train_dataset):
-        y_hat = model(snapshot.x, snapshot.edge_index, snapshot.edge_attr)
+        y_hat = model(snapshot.x.squeeze(1), snapshot.edge_index, snapshot.edge_attr)
         cost = cost + torch.mean((y_hat-snapshot.y)**2)
     cost = cost / (time+1)
     cost.backward()

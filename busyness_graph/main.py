@@ -59,10 +59,10 @@ parser.add_argument('--exponential_decay_step', type=int, default=5)
 parser.add_argument('--decay_rate', type=float, default=0.5)
 parser.add_argument('--dropout_rate', type=float, default=0.5)
 parser.add_argument('--leakyrelu_rate', type=int, default=0.2)
-parser.add_argument('--is_wandb_used', type=bool, default=False)
+parser.add_argument('--is_wandb_used', type=bool, default=True)
 parser.add_argument("--gpu_devices", type=int, nargs='+', default=0, help="")
 parser.add_argument('--start_poi', type=int, default=0)
-parser.add_argument('--end_poi', type=int, default=10)
+parser.add_argument('--end_poi', type=int, default=400)
 
 
 args = parser.parse_args()
@@ -140,7 +140,7 @@ cat_codes_df = get_cat_codes_df(data_frame, cat_codes_dict)
 
 print(f"train {train_data.shape} valid {valid_data.shape} test {test_data.shape}")
 
-run_name = f'{args.dataset}-{str(datetime.now().strftime("%Y-%m-%d %H:%M"))}'
+run_name = f'{args.dataset}-{args.start_poi}-{args.end_poi}-{str(datetime.now().strftime("%Y-%m-%d %H:%M"))}'
 
 wandb_logger = WandbLogger("POI_forecast", args.is_wandb_used, run_name)
 wandb_logger.log_hyperparams(args)

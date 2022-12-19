@@ -9,18 +9,20 @@ import numpy as np
 import time
 import os
 
-from models.gnn_models import A3TGCN_Temporal, DCRNN_Temporal, GConvGRU_Temporal
+from models.gnn_models import A3TGCN_Temporal, DCRNN_Temporal, GConvGRU_Temporal, GConvLSTM_Temporal
 from utils.graph_utils import get_graph_dataset, de_normalize
 from utils.math_utils import evaluate
 
 
-def get_model(model_name):
+def get_model(model_name, args):
     if model_name == 'A3TGCN':
-        return A3TGCN_Temporal
+        return A3TGCN_Temporal(args.node_features, periods=args.window_size, horizon=args.horizon)
     if model_name == 'DCRNN':
-        return DCRNN_Temporal
+        return DCRNN_Temporal(node_features=args.window_size, horizon=args.horizon)
     if model_name == 'ConvGRU':
-        return GConvGRU_Temporal
+        return GConvGRU_Temporal(args.window_size, args.horizon)
+    if model_name == 'ConvLSTM':
+        return GConvLSTM_Temporal(args.window_size, args.horizon)
         
     
     
@@ -61,7 +63,10 @@ def inference(model, dataset, device, window_size, horizon):
             step = 0
             forecast_steps = np.zeros([inputs.shape[1], horizon, inputs.shape[0]], dtype=np.float)
             while step < horizon:
-                forecast_result = model(inputs, snapshot.edge_index, snapshot.edge_attr)
+                if model.__class__ == GConvLSTM_Temporal:
+                    forecast_result, _, _ = model(inputs, snapshot.edge_index, snapshot.edge_attr)
+                else:
+                    forecast_result = model(inputs, snapshot.edge_index, snapshot.edge_attr)
                 len_model_output = forecast_result.size()[1]
                 if len_model_output == 0:
                     raise Exception('Get blank inference result')
@@ -115,8 +120,7 @@ def validate(model, dataset, device, normalize_method, statistic,
 def train(wandb_logger, train_data, valid_data, adj_mat, args, result_file, model_name):
     print('training...')
     
-    model_class = get_model(model_name)
-    model = model_class(args.node_features, args.horizon)
+    model = get_model(model_name, args)
     
     # model = nn.DataParallel(model)
     model.to(args.device)
@@ -180,18 +184,25 @@ def train(wandb_logger, train_data, valid_data, adj_mat, args, result_file, mode
         
         cur_batch_cnt = 0
         loss = 0
+        hidden, cell = None, None
         for i, snapshot in enumerate(train_set):
             snapshot = snapshot.to(args.device)
-            forecast = model(snapshot.x, snapshot.edge_index, snapshot.edge_attr)
+            if model_name == 'ConvLSTM':
+                forecast, hidden, cell = model(snapshot.x, snapshot.edge_index, snapshot.edge_attr,
+                                                  hidden, cell)
+            else:
+                forecast = model(snapshot.x, snapshot.edge_index, snapshot.edge_attr)
             loss += forecast_loss(forecast, snapshot.y)
             cur_batch_cnt += 1
             if cur_batch_cnt % args.batch_size == 0:     
                 cnt += 1
                 model.zero_grad()
+                loss /= cur_batch_cnt
                 loss.backward()
                 my_optim.step()
-                loss_total += float(loss) / args.batch_size
+                loss_total += float(loss)
                 loss = 0
+                hidden, cell = None, None
                     
             
             

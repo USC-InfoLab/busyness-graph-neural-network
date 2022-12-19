@@ -39,7 +39,9 @@ torch.backends.cudnn.deterministic = True
 
 # Available models:
 #     A3TGCN
-#     DCRNN
+#     DCRNN 
+#     ConvGRU
+#     ConvLSTM
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--train', type=bool, default=True)
@@ -69,7 +71,7 @@ parser.add_argument('--start_poi', type=int, default=0)
 parser.add_argument('--end_poi', type=int, default=400)
 parser.add_argument('--total_days', type=int, default=400)
 parser.add_argument('--node_features', type=int, default=1)
-parser.add_argument('--model', type=str, default='ConvGRU')
+parser.add_argument('--model', type=str, default='ConvLSTM')
 
 
 args = parser.parse_args()
@@ -109,7 +111,7 @@ def get_datasets(city):
 def main():
     train_data, valid_data, test_data, df = get_split_data(args.dataset, args)
     adj_mat = get_adj_mat(df)
-    run_name = f'{args.dataset}-{args.model}-{str(datetime.now().strftime("%Y-%m-%d %H:%M"))}'
+    run_name = f'{args.dataset}-{args.model}-{args.start_poi}-{args.end_poi}-{str(datetime.now().strftime("%Y-%m-%d %H:%M"))}'
     
     wandb_logger = WandbLogger("POI_forecast_baselines", args.is_wandb_used, run_name)
     wandb_logger.log_hyperparams(args)

@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 
-from notebooks.utils.data_utils import get_full_df
+from utils.data_utils import get_full_df
 
 SEED = 117
 TOTAL_DAYS = 400
