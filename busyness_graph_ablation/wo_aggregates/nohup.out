@@ -1,0 +1,17 @@
+wandb: Currently logged in as: tlouhs. Use `wandb login --relogin` to force relogin
+wandb: wandb version 0.13.7 is available!  To upgrade, please run:
+wandb:  $ pip install wandb --upgrade
+wandb: Tracking run with wandb version 0.13.5
+wandb: Run data is saved locally in /tank/users/arash/NGA Project/POI_paper/busyness_graph_ablation/wo_aggregates/wandb/run-20221220_221033-167b22fs
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run Houston-0-400-wo-aggregate-nodes-2022-12-20 22:10
+wandb: ⭐️ View project at https://wandb.ai/tlouhs/POI_forecast
+wandb: 🚀 View run at https://wandb.ai/tlouhs/POI_forecast/runs/167b22fs
+/home/users/arash/anaconda3/envs/pyg/lib/python3.10/site-packages/torch/nn/parallel/data_parallel.py:32: UserWarning: 
+    There is an imbalance between your GPUs. You may want to exclude GPU 1 which
+    has less than 75% of the memory or cores of GPU 0. You can do so by setting
+    the device_ids argument to DataParallel, or by setting the CUDA_VISIBLE_DEVICES
+    environment variable.
+  warnings.warn(imbalance_warn.format(device_ids[min_pos], device_ids[max_pos]))
+/home/users/arash/anaconda3/envs/pyg/lib/python3.10/site-packages/torch/nn/modules/rnn.py:955: UserWarning: RNN module weights are not part of single contiguous chunk of memory. This means they need to be compacted at every call, possibly greatly increasing memory usage. To compact weights again call flatten_parameters(). (Triggered internally at /opt/conda/conda-bld/pytorch_1666642969563/work/aten/src/ATen/native/cudnn/RNN.cpp:968.)
+  result = _VF.gru(input, hx, self._flat_weights, self.bias, self.num_layers,
