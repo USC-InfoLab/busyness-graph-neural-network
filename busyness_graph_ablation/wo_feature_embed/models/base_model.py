@@ -142,13 +142,6 @@ class Model(nn.Module):
         for i, cell in enumerate(self.GRU_cells):
             cell.flatten_parameters()
         
-        #TODO: added embeddings layers here
-        # self.embeddings, total_embedding_dim = self._create_embedding_layers(
-        #     embedding_size_dict, 
-        #     embedding_dim_dict,
-        #     device=device)
-        
-        self.cat_cols = []
         
         
         self.multi_layer = multi_layer

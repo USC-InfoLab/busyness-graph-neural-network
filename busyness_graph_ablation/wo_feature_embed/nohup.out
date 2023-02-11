@@ -1,0 +1,216 @@
+wandb: Currently logged in as: tlouhs. Use `wandb login --relogin` to force relogin
+wandb: wandb version 0.13.7 is available!  To upgrade, please run:
+wandb:  $ pip install wandb --upgrade
+wandb: Tracking run with wandb version 0.13.5
+wandb: Run data is saved locally in /tank/users/arash/NGA Project/POI_paper/busyness_graph_ablation/wo_feature_embed/wandb/run-20221220_225355-2ja6omuy
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run Houston-0-400-wo-feature-embed-2022-12-20 22:53
+wandb: ⭐️ View project at https://wandb.ai/tlouhs/POI_forecast
+wandb: 🚀 View run at https://wandb.ai/tlouhs/POI_forecast/runs/2ja6omuy
+Training configs: Namespace(train=True, evaluate=True, dataset='Houston', window_size=24, horizon=6, train_ratio=0.7, valid_ratio=0.2, test_length=0.1, epoch=40, lr=0.0003, multi_layer=5, device='cuda', validate_freq=1, batch_size=32, norm_method='z_score', optimizer='RMSProp', early_stop=False, exponential_decay_step=5, decay_rate=0.5, dropout_rate=0.5, leakyrelu_rate=0.2, is_wandb_used=True, gpu_devices=0, start_poi=0, end_poi=400)
+core_poi-part2.csv
+core_poi-part5.csv
+core_poi-part4.csv
+core_poi-part3.csv
+core_poi-part1.csv
+train (6720, 445) valid (1920, 445) test (960, 445)
+Total Trainable Params: 347026341
+| end of epoch   0 | time: 238.73s | train_total_loss 0.5719
+------ validate on data: VALIDATE ------
+NORM: MAPE 380.918032308%; MAE 0.555492916; RMSE 0.818267858.
+RAW : MAPE 138.912868328%; MAE 7.015511407; RMSE 20.009222862.
+| end of epoch   1 | time: 238.97s | train_total_loss 0.3948
+------ validate on data: VALIDATE ------
+NORM: MAPE 226.916836556%; MAE 0.459592667; RMSE 0.786315667.
+RAW : MAPE 76.437465768%; MAE 5.348183536; RMSE 17.708406505.
+| end of epoch   2 | time: 254.06s | train_total_loss 0.3652
+------ validate on data: VALIDATE ------
+NORM: MAPE 297.085441480%; MAE 0.464294962; RMSE 0.728580594.
+RAW : MAPE 100.436731922%; MAE 5.533515120; RMSE 17.091728684.
+| end of epoch   3 | time: 238.33s | train_total_loss 0.3449
+------ validate on data: VALIDATE ------
+NORM: MAPE 224.553305398%; MAE 0.410656085; RMSE 0.717614593.
+RAW : MAPE 67.332793456%; MAE 4.698787908; RMSE 16.326663552.
+| end of epoch   4 | time: 266.83s | train_total_loss 0.3236
+------ validate on data: VALIDATE ------
+NORM: MAPE 274.009092822%; MAE 0.453616066; RMSE 0.723759955.
+RAW : MAPE 88.476792403%; MAE 5.286002462; RMSE 16.468732754.
+| end of epoch   5 | time: 238.18s | train_total_loss 0.2884
+------ validate on data: VALIDATE ------
+NORM: MAPE 243.796585640%; MAE 0.397324217; RMSE 0.663803748.
+RAW : MAPE 73.426940559%; MAE 4.549649739; RMSE 15.377433241.
+| end of epoch   6 | time: 279.38s | train_total_loss 0.2801
+------ validate on data: VALIDATE ------
+NORM: MAPE 263.937299623%; MAE 0.410519556; RMSE 0.688597025.
+RAW : MAPE 74.234886753%; MAE 4.727669000; RMSE 16.039959188.
+| end of epoch   7 | time: 261.84s | train_total_loss 0.2686
+------ validate on data: VALIDATE ------
+NORM: MAPE 238.117915026%; MAE 0.424101484; RMSE 0.703199820.
+RAW : MAPE 77.499695436%; MAE 4.834870808; RMSE 16.486236109.
+| end of epoch   8 | time: 245.42s | train_total_loss 0.2601
+------ validate on data: VALIDATE ------
+NORM: MAPE 267.806648791%; MAE 0.410952797; RMSE 0.676428197.
+RAW : MAPE 76.514854049%; MAE 4.691064094; RMSE 15.489041042.
+| end of epoch   9 | time: 258.23s | train_total_loss 0.2522
+------ validate on data: VALIDATE ------
+NORM: MAPE 231.460046089%; MAE 0.374546361; RMSE 0.627992045.
+RAW : MAPE 66.861903535%; MAE 4.162668962; RMSE 13.771939597.
+| end of epoch  10 | time: 250.55s | train_total_loss 0.2341
+------ validate on data: VALIDATE ------
+NORM: MAPE 215.962154149%; MAE 0.384751176; RMSE 0.664949315.
+RAW : MAPE 64.666807235%; MAE 4.312798780; RMSE 15.535213374.
+| end of epoch  11 | time: 238.09s | train_total_loss 0.2287
+------ validate on data: VALIDATE ------
+NORM: MAPE 219.067559479%; MAE 0.361499141; RMSE 0.617471147.
+RAW : MAPE 62.083561072%; MAE 4.002445038; RMSE 13.599960765.
+| end of epoch  12 | time: 249.85s | train_total_loss 0.2226
+------ validate on data: VALIDATE ------
+NORM: MAPE 214.673472011%; MAE 0.357653907; RMSE 0.617340796.
+RAW : MAPE 60.964093452%; MAE 3.941414656; RMSE 13.329302343.
+| end of epoch  13 | time: 238.30s | train_total_loss 0.2191
+------ validate on data: VALIDATE ------
+NORM: MAPE 255.835732025%; MAE 0.372636066; RMSE 0.613851228.
+RAW : MAPE 71.588833644%; MAE 4.154845575; RMSE 13.306785544.
+| end of epoch  14 | time: 239.84s | train_total_loss 0.2137
+------ validate on data: VALIDATE ------
+NORM: MAPE 229.572797364%; MAE 0.369800792; RMSE 0.637642353.
+RAW : MAPE 61.796050383%; MAE 4.057415337; RMSE 13.324053493.
+| end of epoch  15 | time: 256.79s | train_total_loss 0.2089
+------ validate on data: VALIDATE ------
+NORM: MAPE 237.435244259%; MAE 0.371298886; RMSE 0.614725026.
+RAW : MAPE 68.432550186%; MAE 4.103433014; RMSE 13.601656417.
+| end of epoch  16 | time: 255.18s | train_total_loss 0.2062
+------ validate on data: VALIDATE ------
+NORM: MAPE 215.680964854%; MAE 0.356762150; RMSE 0.612201309.
+RAW : MAPE 62.413711429%; MAE 3.911377538; RMSE 13.377430143.
+| end of epoch  17 | time: 251.95s | train_total_loss 0.2050
+------ validate on data: VALIDATE ------
+NORM: MAPE 218.777722032%; MAE 0.357945397; RMSE 0.606496989.
+RAW : MAPE 62.210924431%; MAE 3.924438415; RMSE 13.139800408.
+| end of epoch  18 | time: 248.59s | train_total_loss 0.2030
+------ validate on data: VALIDATE ------
+NORM: MAPE 202.228358246%; MAE 0.347014458; RMSE 0.600709865.
+RAW : MAPE 57.181387539%; MAE 3.745564733; RMSE 12.667132218.
+| end of epoch  19 | time: 240.24s | train_total_loss 0.2016
+------ validate on data: VALIDATE ------
+NORM: MAPE 221.433687209%; MAE 0.350587219; RMSE 0.593549161.
+RAW : MAPE 61.682861108%; MAE 3.815736241; RMSE 12.714846875.
+| end of epoch  20 | time: 238.90s | train_total_loss 0.1993
+------ validate on data: VALIDATE ------
+NORM: MAPE 207.648862351%; MAE 0.347285691; RMSE 0.594298228.
+RAW : MAPE 58.567734377%; MAE 3.745389766; RMSE 12.527647981.
+| end of epoch  21 | time: 243.08s | train_total_loss 0.1981
+------ validate on data: VALIDATE ------
+NORM: MAPE 211.295248837%; MAE 0.347139452; RMSE 0.593273372.
+RAW : MAPE 59.548051539%; MAE 3.748753504; RMSE 12.508309536.
+| end of epoch  22 | time: 240.09s | train_total_loss 0.1973
+------ validate on data: VALIDATE ------
+NORM: MAPE 215.474415064%; MAE 0.346673877; RMSE 0.593877647.
+RAW : MAPE 60.263187542%; MAE 3.747997049; RMSE 12.483880882.
+| end of epoch  23 | time: 247.10s | train_total_loss 0.1965
+------ validate on data: VALIDATE ------
+NORM: MAPE 202.035281747%; MAE 0.345168050; RMSE 0.597467032.
+RAW : MAPE 56.736993592%; MAE 3.712240996; RMSE 12.501541404.
+| end of epoch  24 | time: 244.08s | train_total_loss 0.1960
+------ validate on data: VALIDATE ------
+NORM: MAPE 205.161216852%; MAE 0.341479144; RMSE 0.587985384.
+RAW : MAPE 57.657521638%; MAE 3.669489964; RMSE 12.338148776.
+| end of epoch  25 | time: 239.27s | train_total_loss 0.1952
+------ validate on data: VALIDATE ------
+NORM: MAPE 204.833522273%; MAE 0.345450422; RMSE 0.596780658.
+RAW : MAPE 57.416817865%; MAE 3.718742202; RMSE 12.542019476.
+| end of epoch  26 | time: 242.09s | train_total_loss 0.1943
+------ validate on data: VALIDATE ------
+NORM: MAPE 207.145826457%; MAE 0.346288510; RMSE 0.595082316.
+RAW : MAPE 58.255828234%; MAE 3.731118372; RMSE 12.577827189.
+| end of epoch  27 | time: 237.98s | train_total_loss 0.1945
+------ validate on data: VALIDATE ------
+NORM: MAPE 210.047116764%; MAE 0.345723232; RMSE 0.594584277.
+RAW : MAPE 58.080105729%; MAE 3.722629029; RMSE 12.527826255.
+| end of epoch  28 | time: 242.12s | train_total_loss 0.1941
+------ validate on data: VALIDATE ------
+NORM: MAPE 206.590084978%; MAE 0.341957758; RMSE 0.587156084.
+RAW : MAPE 57.495799818%; MAE 3.667154760; RMSE 12.270024963.
+| end of epoch  29 | time: 248.87s | train_total_loss 0.1935
+------ validate on data: VALIDATE ------
+NORM: MAPE 210.428608593%; MAE 0.346373781; RMSE 0.589531795.
+RAW : MAPE 59.631435865%; MAE 3.727865856; RMSE 12.443176090.
+| end of epoch  30 | time: 259.55s | train_total_loss 0.1931
+------ validate on data: VALIDATE ------
+NORM: MAPE 206.616555009%; MAE 0.343938022; RMSE 0.591094482.
+RAW : MAPE 57.777503414%; MAE 3.693487704; RMSE 12.409292356.
+| end of epoch  31 | time: 238.15s | train_total_loss 0.1925
+------ validate on data: VALIDATE ------
+NORM: MAPE 207.872092528%; MAE 0.344060133; RMSE 0.590682509.
+RAW : MAPE 58.035227410%; MAE 3.697294762; RMSE 12.397327310.
+| end of epoch  32 | time: 239.11s | train_total_loss 0.1925
+------ validate on data: VALIDATE ------
+NORM: MAPE 206.120781585%; MAE 0.342493146; RMSE 0.589392968.
+RAW : MAPE 57.458696997%; MAE 3.672795174; RMSE 12.315058494.
+| end of epoch  33 | time: 240.93s | train_total_loss 0.1925
+------ validate on data: VALIDATE ------
+NORM: MAPE 207.155722633%; MAE 0.343782681; RMSE 0.590190210.
+RAW : MAPE 57.854341096%; MAE 3.691689028; RMSE 12.433291100.
+| end of epoch  34 | time: 293.92s | train_total_loss 0.1919
+------ validate on data: VALIDATE ------
+NORM: MAPE 206.877571125%; MAE 0.344151250; RMSE 0.592028213.
+RAW : MAPE 57.838304302%; MAE 3.695933629; RMSE 12.436089918.
+| end of epoch  35 | time: 240.01s | train_total_loss 0.1919
+------ validate on data: VALIDATE ------
+NORM: MAPE 206.512537124%; MAE 0.343028316; RMSE 0.589823293.
+RAW : MAPE 57.583690920%; MAE 3.678700127; RMSE 12.352441405.
+| end of epoch  36 | time: 249.56s | train_total_loss 0.1916
+------ validate on data: VALIDATE ------
+NORM: MAPE 206.076209671%; MAE 0.343238766; RMSE 0.589960751.
+RAW : MAPE 57.639465863%; MAE 3.682261875; RMSE 12.357913415.
+| end of epoch  37 | time: 237.96s | train_total_loss 0.1915
+------ validate on data: VALIDATE ------
+NORM: MAPE 207.076120559%; MAE 0.343523759; RMSE 0.591434593.
+RAW : MAPE 57.550788353%; MAE 3.686932971; RMSE 12.414142090.
+| end of epoch  38 | time: 242.94s | train_total_loss 0.1919
+------ validate on data: VALIDATE ------
+NORM: MAPE 207.789167532%; MAE 0.343780753; RMSE 0.590829560.
+RAW : MAPE 57.941682607%; MAE 3.690350048; RMSE 12.411827083.
+| end of epoch  39 | time: 238.92s | train_total_loss 0.1915
+------ validate on data: VALIDATE ------
+NORM: MAPE 206.219294166%; MAE 0.343175160; RMSE 0.590816860.
+RAW : MAPE 57.361319005%; MAE 3.679281901; RMSE 12.379415285.
+Training took 186.06820188363392 minutes
+Traceback (most recent call last):
+  File "/home/users/arash/anaconda3/envs/pyg/lib/python3.10/site-packages/pandas/core/indexes/base.py", line 3361, in get_loc
+    return self._engine.get_loc(casted_key)
+  File "pandas/_libs/index.pyx", line 76, in pandas._libs.index.IndexEngine.get_loc
+  File "pandas/_libs/index.pyx", line 108, in pandas._libs.index.IndexEngine.get_loc
+  File "pandas/_libs/hashtable_class_helper.pxi", line 5198, in pandas._libs.hashtable.PyObjectHashTable.get_item
+  File "pandas/_libs/hashtable_class_helper.pxi", line 5206, in pandas._libs.hashtable.PyObjectHashTable.get_item
+KeyError: None
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/tank/users/arash/NGA Project/POI_paper/busyness_graph_ablation/wo_feature_embed/main.py", line 164, in <module>
+    data_frame[CAT_COLS], nodes_num=args.end_poi-args.start_poi)
+  File "/home/users/arash/anaconda3/envs/pyg/lib/python3.10/site-packages/pandas/core/frame.py", line 3458, in __getitem__
+    indexer = self.columns.get_loc(key)
+  File "/home/users/arash/anaconda3/envs/pyg/lib/python3.10/site-packages/pandas/core/indexes/base.py", line 3363, in get_loc
+    raise KeyError(key) from err
+KeyError: None
+wandb: Waiting for W&B process to finish... (failed 1). Press Control-C to abort syncing.
+wandb: - 0.005 MB of 0.005 MB uploaded (0.000 MB deduped)wandb: \ 0.005 MB of 0.005 MB uploaded (0.000 MB deduped)wandb: | 0.005 MB of 0.005 MB uploaded (0.000 MB deduped)wandb: / 0.005 MB of 0.005 MB uploaded (0.000 MB deduped)wandb: - 0.005 MB of 0.005 MB uploaded (0.000 MB deduped)wandb: \ 0.005 MB of 0.005 MB uploaded (0.000 MB deduped)wandb: | 0.005 MB of 0.005 MB uploaded (0.000 MB deduped)wandb: 
+wandb: Run history:
+wandb:            Round ▁▁▁▂▂▂▂▂▂▃▃▃▃▃▄▄▄▄▄▄▅▅▅▅▅▅▆▆▆▆▆▇▇▇▇▇▇███
+wandb: train_total_loss █▅▄▄▃▃▃▂▂▂▂▂▂▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:          val_mae █▅▅▃▄▃▃▃▃▂▂▂▂▂▂▂▂▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:         val_mape █▃▅▂▄▂▂▃▃▂▂▁▁▂▁▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:         val_rmse █▆▅▅▅▄▄▅▄▂▄▂▂▂▂▂▂▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb: 
+wandb: Run summary:
+wandb:            Round 39
+wandb: train_total_loss 0.19149
+wandb:          val_mae 3.67928
+wandb:         val_mape 0.57361
+wandb:         val_rmse 12.37942
+wandb: 
+wandb: Synced Houston-0-400-wo-feature-embed-2022-12-20 22:53: https://wandb.ai/tlouhs/POI_forecast/runs/2ja6omuy
+wandb: Synced 6 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20221220_225355-2ja6omuy/logs

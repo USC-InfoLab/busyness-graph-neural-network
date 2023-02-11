@@ -172,11 +172,9 @@ def train(wandb_logger, train_data, valid_data, args, result_file, static_featur
     my_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=my_optim, gamma=args.decay_rate)
 
     train_set = ForecastDataset(train_data, window_size=args.window_size, horizon=args.horizon,
-                                normalize_method=args.norm_method, norm_statistic=normalize_statistic,
-                                df_static_features=static_features)
+                                normalize_method=args.norm_method, norm_statistic=normalize_statistic)
     valid_set = ForecastDataset(valid_data, window_size=args.window_size, horizon=args.horizon,
-                                normalize_method=args.norm_method, norm_statistic=normalize_statistic,
-                                df_static_features=static_features)
+                                normalize_method=args.norm_method, norm_statistic=normalize_statistic)
     train_loader = torch_data.DataLoader(train_set, batch_size=args.batch_size, drop_last=False, shuffle=True,
                                          num_workers=0)
     valid_loader = torch_data.DataLoader(valid_set, batch_size=args.batch_size, shuffle=False, num_workers=0)

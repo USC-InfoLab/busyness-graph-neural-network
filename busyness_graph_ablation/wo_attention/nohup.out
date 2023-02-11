@@ -1,0 +1,13 @@
+wandb: Currently logged in as: tlouhs. Use `wandb login --relogin` to force relogin
+wandb: wandb version 0.13.7 is available!  To upgrade, please run:
+wandb:  $ pip install wandb --upgrade
+wandb: Tracking run with wandb version 0.13.5
+wandb: Run data is saved locally in /tank/users/arash/NGA Project/POI_paper/busyness_graph_ablation/wo_attention/wandb/run-20221221_192108-4c0xsigu
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run Houston-0-400-wo-attention-2022-12-21 19:21
+wandb: ⭐️ View project at https://wandb.ai/tlouhs/POI_forecast
+wandb: 🚀 View run at https://wandb.ai/tlouhs/POI_forecast/runs/4c0xsigu
+/home/users/arash/anaconda3/envs/pyg/lib/python3.10/site-packages/torch/nn/modules/rnn.py:955: UserWarning: RNN module weights are not part of single contiguous chunk of memory. This means they need to be compacted at every call, possibly greatly increasing memory usage. To compact weights again call flatten_parameters(). (Triggered internally at /opt/conda/conda-bld/pytorch_1666642969563/work/aten/src/ATen/native/cudnn/RNN.cpp:968.)
+  result = _VF.gru(input, hx, self._flat_weights, self.bias, self.num_layers,
+--- Logging error ---
+wandb: ERROR Failed to sample metric: process no longer exists (pid=3102)

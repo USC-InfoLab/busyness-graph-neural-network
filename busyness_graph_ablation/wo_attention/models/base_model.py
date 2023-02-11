@@ -129,7 +129,7 @@ class Model(nn.Module):
         self.param_eps = nn.Parameter(torch.tensor(0.0))
         self.param_t = nn.Parameter(torch.tensor(1.0))
         # TODO: REMOVE time_attention
-        self.time_attention = Attention(self.unit, self.unit)
+        # self.time_attention = Attention(self.unit, self.unit)
         # TODO: Remove multiheadattention layer
         self.self_attention = nn.MultiheadAttention(self.unit, 5, dropout_rate, device=device, batch_first=True)
         
@@ -228,12 +228,12 @@ class Model(nn.Module):
             gru_outputs, hid = cell(x_sup)
             hid = hid.squeeze(0)
             gru_outputs = gru_outputs.permute(1, 0, 2).contiguous()
-            weights = self.time_attention(hid, gru_outputs)
-            updated_weights = weights.unsqueeze(1)
+            # weights = self.time_attention(hid, gru_outputs)
+            # updated_weights = weights.unsqueeze(1)
             gru_outputs = gru_outputs.permute(1, 0, 2)
-            weighted = torch.bmm(updated_weights, gru_outputs)
-            weighted = weighted.squeeze(1)
-            weighted_res[:, i, :] = self.layer_norm(weighted + hid)
+            # weighted = torch.bmm(updated_weights, gru_outputs)
+            # weighted = weighted.squeeze(1)
+            weighted_res[:, i, :] = hid
             # weighted_res[:, i, :] = weighted
         # new_x = x.permute(2, 0, 1).reshape(-1, window).unsqueeze(-1).contiguous()
         # new_x = self.seq1(new_x)

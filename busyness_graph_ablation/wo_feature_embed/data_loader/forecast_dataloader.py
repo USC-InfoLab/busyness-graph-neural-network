@@ -56,11 +56,6 @@ class ForecastDataset(torch_data.Dataset):
         self.x_end_idx = self.get_x_end_idx()
         if normalize_method:
             self.data, _ = normalized(self.data, normalize_method, norm_statistic)
-        self.df_static_features = df_static_features
-        self.uses_static_fetures = df_static_features is not None
-        if self.uses_static_fetures:
-            self.cat_codes_dict = get_cat_codes(df_static_features, df_static_features.columns)
-            self.cat_codes_df = get_cat_codes_df(df_static_features, self.cat_codes_dict)
 
 
     def __getitem__(self, index):
@@ -70,10 +65,6 @@ class ForecastDataset(torch_data.Dataset):
         target_data = self.data[hi:hi + self.horizon]
         x = torch.from_numpy(train_data).type(torch.float)
         y = torch.from_numpy(target_data).type(torch.float)
-        if self.uses_static_fetures:
-            static_features = torch.from_numpy(self.cat_codes_df.to_numpy().T)
-        else:
-            static_features = None
         return x, y
 
     def __len__(self):
