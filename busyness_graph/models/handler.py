@@ -124,7 +124,9 @@ def validate(model, dataloader, device, normalize_method, statistic,
                 rmse=score[2], rmse_node=score_by_node[2])
 
 
-def train(wandb_logger, train_data, valid_data, args, result_file, static_features=None, cat_codes_dict=None, nodes_num=None):
+def train(wandb_logger, train_data, valid_data, args, result_file, 
+          static_features=None, cat_codes_dict=None, nodes_num=None,
+          dist_adj_mat=None):
     node_cnt = train_data.shape[1]
     
     #TODO: adding categorical varialbes
@@ -141,7 +143,9 @@ def train(wandb_logger, train_data, valid_data, args, result_file, static_featur
     model = Model(wandb_logger, node_cnt, 2, 
                   args.window_size, args.multi_layer, horizon=args.horizon,
                   embedding_size_dict=embedding_size_dict,
-                  embedding_dim_dict=embedding_dim_dict)
+                  embedding_dim_dict=embedding_dim_dict,
+                  dist_adj=dist_adj_mat,
+                  device=args.device)
     model = nn.DataParallel(model)
     model.to(args.device)
     wandb_logger.watch_model(model)

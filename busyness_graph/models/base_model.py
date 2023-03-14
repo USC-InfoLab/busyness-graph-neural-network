@@ -11,8 +11,10 @@ class Model(nn.Module):
                  multi_layer, horizon=1,
                  embedding_size_dict=None, embedding_dim_dict=None,
                  dropout_rate=0.5, leaky_rate=0.2,
-                 device='cpu'):
+                 device='cpu', gru_dim=128, num_heads=8,
+                 dist_adj=None):
         super(Model, self).__init__()
+        self.gru_dim = gru_dim
         self.wandb_logger=wandb_logger
         self.unit = units
         self.stack_cnt = stack_cnt
@@ -26,27 +28,29 @@ class Model(nn.Module):
         nn.init.xavier_uniform_(self.weight_query.data, gain=1.414)
         # TODO: Remove batch_first flag
         # self.GRU = nn.GRU(self.time_step, self.unit) TODO: Uncomment
+        # TODO STG1
         self.seq1 = nn.Sequential(
-            nn.Linear(1, 64),
+            nn.Linear(1, 32),
             nn.ReLU(),
-            nn.Linear(64, 128),
+            nn.Linear(32, 64),
             nn.ReLU(),
             nn.Dropout(dropout_rate)
         )
         # self.GRU = nn.GRU(128, self.unit, batch_first=True)
-        self.layer_norm = nn.LayerNorm(self.unit)
+        self.layer_norm = nn.LayerNorm(self.gru_dim)
         self.param_eps = nn.Parameter(torch.tensor(0.0))
         self.param_t = nn.Parameter(torch.tensor(1.0))
         # TODO: REMOVE time_attention
-        self.time_attention = Attention(self.unit, self.unit)
+        # TODO STG1
+        self.time_attention = Attention(self.gru_dim, self.gru_dim)
         # TODO: Remove multiheadattention layer
-        self.self_attention = nn.MultiheadAttention(self.unit, 5, dropout_rate, device=device, batch_first=True)
+        self.mhead_attention = nn.MultiheadAttention(self.gru_dim, num_heads, dropout_rate, device=device, batch_first=True)
         
         self.GRU_cells = nn.ModuleList(
-            nn.GRU(128, self.unit, batch_first=True) for _ in range(self.unit)
+            nn.GRU(64, gru_dim, batch_first=True) for _ in range(self.unit)
         )
         
-        self.fc_ta = nn.Linear(self.unit, self.time_step) #TODO remove this
+        self.fc_ta = nn.Linear(gru_dim, self.time_step) #TODO remove this
         
         for i, cell in enumerate(self.GRU_cells):
             cell.flatten_parameters()
@@ -73,13 +77,13 @@ class Model(nn.Module):
         
         self.leakyrelu = nn.LeakyReLU(self.alpha)
         self.dropout = nn.Dropout(p=dropout_rate)
-        self.to(device)
+  
 
 
         self.convs = nn.ModuleList()
 
         self.conv_hidden_dim = 32
-        self.conv_layers_num = 2
+        self.conv_layers_num = 3
 
         self.convs.append(pyg_nn.GCNConv(self.node_feature_dim, self.conv_hidden_dim)) 
 
@@ -93,6 +97,17 @@ class Model(nn.Module):
             nn.Linear(int(self.node_feature_dim), self.horizon),
             # nn.Tanh(), #TODO: Delete this line
         )
+
+        if dist_adj is None:
+            self.dist_adj = torch.ones((self.unit, self.unit)).to(device).float()
+        else:
+            self.dist_adj = torch.from_numpy(dist_adj).to(device).float()
+
+        
+        self.attention_thres = AttentionThreshold(self.unit)
+
+        self.to(device)
+
         
 
 
@@ -100,9 +115,12 @@ class Model(nn.Module):
         batch_size, _, node_cnt = x.shape
         window = x.shape[1]
         new_x = x.permute(2, 0, 1)
-        weighted_res = torch.empty(batch_size, node_cnt, node_cnt).to(x.get_device())
+        weighted_res = torch.empty(batch_size, node_cnt, self.gru_dim).to(x.get_device())
         for i, cell in enumerate(self.GRU_cells):
+            cell.flatten_parameters()
+            # TODO STG1
             x_sup = self.seq1(new_x[i].unsqueeze(-1))
+            # x_sup = new_x[i].unsqueeze(-1)
             gru_outputs, hid = cell(x_sup)
             hid = hid.squeeze(0)
             gru_outputs = gru_outputs.permute(1, 0, 2).contiguous()
@@ -112,19 +130,35 @@ class Model(nn.Module):
             weighted = torch.bmm(updated_weights, gru_outputs)
             weighted = weighted.squeeze(1)
             weighted_res[:, i, :] = self.layer_norm(weighted + hid)
-        _, attention = self.self_attention(weighted_res, weighted_res, weighted_res)
+        _, attention = self.mhead_attention(weighted_res, weighted_res, weighted_res)
 
         attention = torch.mean(attention, dim=0) #[2000, 2000]
+
+        # attention is temporal attention. Combine it with spatial attention + add self-loops 
+        # first use distance matrix as a gate
+        ########
+        # self.dist_adj = self.dist_adj.to(x.get_device())
+        # attention_hat = (self.dist_adj * attention)
+        #########
+        
+        # attention_hat = torch.nn.functional.normalize(attention_hat, p=2, dim=0)
+        # for i in range(attention_hat.shape[0]):
+        #     attention_hat[i, i] += 1
         return attention, weighted_res # TODO replace with above line
 
 
 
     def forward(self, x, static_features=None):
         attention, weighted_res = self.latent_correlation_layer(x) # TODO replace with above line
-        edge_indices, edge_attrs = pyg_utils.dense_to_sparse(attention)
+
+        # attention_mask = self.attention_thres(attention)
+        # attention[~attention_mask] = 0
+
+
         
         
         weighted_res = self.fc_ta(weighted_res)
+        weighted_res = F.relu(weighted_res)
         # weighted_res = F.relu(weighted_res)
         
         X = weighted_res.unsqueeze(1).permute(0, 1, 2, 3).contiguous() #TODO replace with above line
@@ -141,6 +175,16 @@ class Model(nn.Module):
             
             cat_outputs = torch.cat(cat_outputs, dim=2)
             X = torch.cat((X, cat_outputs.unsqueeze(1)), dim=3)
+            
+        embed_att = self.get_embed_att_mat2(cat_outputs)
+        self.dist_adj = self.dist_adj.to(x.get_device())
+        attention = (((self.dist_adj + embed_att)/2) * attention)
+        
+        attention_mask = self.attention_thres(attention)
+        attention[~attention_mask] = 0
+        
+        edge_indices, edge_attrs = pyg_utils.dense_to_sparse(attention)
+
         
 
         result = []
@@ -166,6 +210,49 @@ class Model(nn.Module):
             embeddings[col] = nn.Embedding(embedding_size, embedding_dim, device=device)
             
         return nn.ModuleDict(embeddings), total_embedding_dim
+    
+    
+    def get_embed_att_mat(self, embed_tensor):
+        # embe_vecs: the tensor with shape (batch, POI_NUM, embed_dim)
+        # Compute the dot product between all pairs of embeddings
+        similarity_matrix = torch.bmm(embed_tensor, embed_tensor.transpose(1, 2))
+
+        # Compute the magnitudes of each embedding vector
+        magnitude = torch.norm(embed_tensor, p=2, dim=2, keepdim=True)
+
+        # Normalize the dot product by the magnitudes
+        normalized_similarity_matrix = similarity_matrix / (magnitude * magnitude.transpose(1, 2))
+
+        # Apply a softmax function to obtain a probability distribution
+        # similarity_matrix_prob = F.softmax(normalized_similarity_matrix, dim=2).mean(dim=0)
+        
+        return normalized_similarity_matrix.mean(dim=0).abs()
+    
+    
+    def get_embed_att_mat2(self, embed_tensor):
+        # Compute the Euclidean distance between all pairs of embeddings
+        similarity_matrix = torch.cdist(embed_tensor[0], embed_tensor[0])
+
+        # Convert the distances to similarities using a Gaussian kernel
+        sigma = 1.0  # adjust this parameter to control the width of the kernel
+        similarity_matrix = torch.exp(-similarity_matrix.pow(2) / (2 * sigma**2))
+
+        # Normalize the similarity matrix by row
+        # row_sum = similarity_matrix.sum(dim=2, keepdim=True)
+        # similarity_matrix_prob = similarity_matrix / row_sum
+        
+        return similarity_matrix
+
+
+class AttentionThreshold(nn.Module):
+    def __init__(self, input_size, threshold_value=0.002):
+        super().__init__()
+        self.threshold = nn.Parameter(torch.tensor(threshold_value), requires_grad=True)
+
+    def forward(self, attention_matrix):
+        # Apply the threshold to the attention matrix to get a binary mask
+        mask = attention_matrix > self.threshold
+        return mask
         
         
 # TODO: REMOVE THIS CLASS

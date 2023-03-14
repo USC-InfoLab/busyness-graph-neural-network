@@ -133,3 +133,29 @@ def get_cat_codes_df(df, cat_code_dict):
 def emb_sz_rule(n_cat):
     "Rule of thumb to pick embedding size corresponding to `n_cat`"
     return min(600, round(1.6 * n_cat ** 0.56))
+    # return min(600, round(5* int(n_cat ** 0.3)))
+    # return round(math.sqrt(n_cat))
+
+
+def get_distances(coords):
+    num_points = coords.shape[0]
+    distances = np.array([[np.linalg.norm(i-j) for j in coords] for i in coords])
+    return distances
+
+
+def gaussian_kern(arr, thres=1):
+    res = arr.copy()
+    res[res<=thres] = np.exp(-(res[res<=thres]**2)/(np.nanstd(arr)**2))
+    res[np.isnan(arr)] = 0
+    res[arr>thres] = 0
+    return res
+
+
+def get_dist_adj_mat(df, nodes_num):
+    coords = df[['latitude', 'longitude']].to_numpy()
+    distances = get_distances(coords)
+    thres = np.nanstd(distances) * 2
+    adj_mat = gaussian_kern(distances, thres=thres)
+    adj_mat[:, nodes_num:] = 1
+    adj_mat[nodes_num:, :] = 1
+    return adj_mat

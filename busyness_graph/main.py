@@ -15,8 +15,8 @@ from utils.math_utils import evaluate
 from utils.math_utils import WandbLogger
 from utils.data_utils import get_merged_df, get_full_df, load_poi_db, smooth_poi
 from utils.data_utils import get_cat_codes, get_cat_codes_df, get_globals_df
-from utils.data_utils import get_globs_types_df
-import time
+from utils.data_utils import get_globs_types_df, get_dist_adj_mat
+import time, pickle
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 SEED = 117 # John-117 :>
@@ -41,7 +41,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--train', type=bool, default=True)
 parser.add_argument('--evaluate', type=bool, default=True)
 parser.add_argument('--dataset', type=str, default='Houston')
-parser.add_argument('--window_size', type=int, default=24)
+parser.add_argument('--window_size', type=int, default=168)
 parser.add_argument('--horizon', type=int, default=6)
 parser.add_argument('--train_ratio', type=float, default=0.7)
 parser.add_argument('--valid_ratio', type=float, default=0.2)
@@ -61,6 +61,8 @@ parser.add_argument('--dropout_rate', type=float, default=0.5)
 parser.add_argument('--leakyrelu_rate', type=int, default=0.2)
 parser.add_argument('--is_wandb_used', type=bool, default=True)
 parser.add_argument("--gpu_devices", type=int, nargs='+', default=0, help="")
+parser.add_argument("--cache_data", type=bool, default=True)
+parser.add_argument("--run_identity", type=str, default='GRU Attention + Combine-Attention - no self-loop (High Dim)')
 parser.add_argument('--start_poi', type=int, default=0)
 parser.add_argument('--end_poi', type=int, default=400)
 
@@ -97,22 +99,33 @@ poi_info_csv_path = '/home/users/arash/datasets/safegraph/core_poi_info_2019-01-
     
 #data_frame = get_merged_df(csv_path=csv_path, num=2000)
 # data_frame = get_merged_df(csv_path=csv_path, start_row=args.start_poi,end_row=args.end_poi)
+data_pkl_dir = f'./cache_data/'
+data_pkl_path = os.path.join(data_pkl_dir, f'data-{args.start_poi}-{args.end_poi}-{TOTAL_DAYS}-{args.dataset}.pkl')
+if not os.path.exists(data_pkl_dir):
+    os.makedirs(data_pkl_dir)
+if args.cache_data and os.path.exists(data_pkl_path):
+    print('Data already exists...')
+    data_frame = pd.read_pickle(data_pkl_path)
+    print('Data loaded')
+else:
+    data_frame = get_full_df(csv_path_weekly=csv_path, 
+                        poi_info_csv_path=poi_info_csv_path, 
+                        start_row=args.start_poi, end_row=args.end_poi, 
+                        total_days=TOTAL_DAYS,
+                        city=args.dataset)
 
-data_frame = get_full_df(csv_path_weekly=csv_path, 
-                         poi_info_csv_path=poi_info_csv_path, 
-                         start_row=args.start_poi, end_row=args.end_poi, 
-                         total_days=TOTAL_DAYS,
-                         city=args.dataset)
+    #TODO: Remove this line?
+    # data_frame = get_globals_df(data_frame)
 
-#TODO: Remove this line?
-# data_frame = get_globals_df(data_frame)
+    data_frame = get_globs_types_df(data_frame, 'top_category')
 
-data_frame = get_globs_types_df(data_frame, 'top_category')
+    # data_frame.to_csv('full_dataset.csv', index=False)
 
-# data_frame.to_csv('full_dataset.csv', index=False)
+    # data_frame = get_good_poi(data_frame)
+    # data_frame = smooth_poi(data_frame)
 
-# data_frame = get_good_poi(data_frame)
-# data_frame = smooth_poi(data_frame)
+    pd.to_pickle(data_frame, data_pkl_path)
+    print('Data cached...')
 
 data = pd.DataFrame(data_frame["visits_by_each_hour"].to_list()).T
 args.n_route = data.shape[-1]
@@ -140,7 +153,9 @@ cat_codes_df = get_cat_codes_df(data_frame, cat_codes_dict)
 
 print(f"train {train_data.shape} valid {valid_data.shape} test {test_data.shape}")
 
-run_name = f'{args.dataset}-{args.start_poi}-{args.end_poi}-{str(datetime.now().strftime("%Y-%m-%d %H:%M"))}'
+run_name = f'{args.dataset}-{args.start_poi}-{args.end_poi}-w:{args.window_size}-h:{args.horizon}-{args.run_identity}-{str(datetime.now().strftime("%Y-%m-%d %H:%M"))}'
+
+dist_adj_mat = get_dist_adj_mat(data_frame, nodes_num=args.end_poi-args.start_poi)
 
 wandb_logger = WandbLogger("POI_forecast", args.is_wandb_used, run_name)
 wandb_logger.log_hyperparams(args)
@@ -152,7 +167,8 @@ if __name__ == '__main__':
                                            args, result_train_file, 
                                            data_frame[CAT_COLS],
                                            cat_codes_dict,
-                                           nodes_num=args.end_poi-args.start_poi)
+                                           nodes_num=args.end_poi-args.start_poi,
+                                           dist_adj_mat=dist_adj_mat)
             after_train = datetime.now().timestamp()
             print(f'Training took {(after_train - before_train) / 60} minutes')
         except KeyboardInterrupt:
