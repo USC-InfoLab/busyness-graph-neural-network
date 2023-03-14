@@ -176,9 +176,10 @@ class Model(nn.Module):
             cat_outputs = torch.cat(cat_outputs, dim=2)
             X = torch.cat((X, cat_outputs.unsqueeze(1)), dim=3)
             
-        embed_att = self.get_embed_att_mat2(cat_outputs)
+        embed_att = self.get_embed_att_mat_euc(cat_outputs)
         self.dist_adj = self.dist_adj.to(x.get_device())
         attention = (((self.dist_adj + embed_att)/2) * attention)
+        # attention = ((self.dist_adj + embed_att) * attention)
         
         attention_mask = self.attention_thres(attention)
         attention[~attention_mask] = 0
@@ -212,7 +213,7 @@ class Model(nn.Module):
         return nn.ModuleDict(embeddings), total_embedding_dim
     
     
-    def get_embed_att_mat(self, embed_tensor):
+    def get_embed_att_mat_cosine(self, embed_tensor):
         # embe_vecs: the tensor with shape (batch, POI_NUM, embed_dim)
         # Compute the dot product between all pairs of embeddings
         similarity_matrix = torch.bmm(embed_tensor, embed_tensor.transpose(1, 2))
@@ -227,9 +228,10 @@ class Model(nn.Module):
         # similarity_matrix_prob = F.softmax(normalized_similarity_matrix, dim=2).mean(dim=0)
         
         return normalized_similarity_matrix.mean(dim=0).abs()
+        # return similarity_matrix_prob
     
     
-    def get_embed_att_mat2(self, embed_tensor):
+    def get_embed_att_mat_euc(self, embed_tensor):
         # Compute the Euclidean distance between all pairs of embeddings
         similarity_matrix = torch.cdist(embed_tensor[0], embed_tensor[0])
 
@@ -238,9 +240,10 @@ class Model(nn.Module):
         similarity_matrix = torch.exp(-similarity_matrix.pow(2) / (2 * sigma**2))
 
         # Normalize the similarity matrix by row
-        # row_sum = similarity_matrix.sum(dim=2, keepdim=True)
+        # row_sum = similarity_matrix.sum(dim=1, keepdim=True)
         # similarity_matrix_prob = similarity_matrix / row_sum
         
+        # return similarity_matrix
         return similarity_matrix
 
 
