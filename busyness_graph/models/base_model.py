@@ -105,6 +105,12 @@ class Model(nn.Module):
 
         
         self.attention_thres = AttentionThreshold(self.unit)
+        
+        # self.GLUs = nn.Sequential(
+        #    GLU(self.node_feature_dim, self.node_feature_dim * 4),
+        #    GLU(self.node_feature_dim*4, self.node_feature_dim * 4),
+        #    GLU(self.node_feature_dim*4, self.node_feature_dim)
+        # )
 
         self.to(device)
 
@@ -185,6 +191,8 @@ class Model(nn.Module):
         attention[~attention_mask] = 0
         
         edge_indices, edge_attrs = pyg_utils.dense_to_sparse(attention)
+        
+        # X = self.GLUs(X)
 
         
 
@@ -291,3 +299,13 @@ class Attention(nn.Module):
         #attention= [batch size, src len]
         
         return F.softmax(attention, dim=1)
+    
+    
+class GLU(nn.Module):
+    def __init__(self, input_channel, output_channel):
+        super(GLU, self).__init__()
+        self.fc_left = nn.Linear(input_channel, output_channel)
+        self.fc_right = nn.Linear(input_channel, output_channel)
+
+    def forward(self, x):
+        return torch.mul(self.fc_left(x), torch.sigmoid(self.fc_right(x)))

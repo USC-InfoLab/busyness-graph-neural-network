@@ -62,7 +62,7 @@ parser.add_argument('--leakyrelu_rate', type=int, default=0.2)
 parser.add_argument('--is_wandb_used', type=bool, default=True)
 parser.add_argument("--gpu_devices", type=int, nargs='+', default=0, help="")
 parser.add_argument("--cache_data", type=bool, default=True)
-parser.add_argument("--run_identity", type=str, default='GRU Attention + Combine-Attention - no self-loop (High Dim)')
+parser.add_argument("--run_identity", type=str, default='GRU Attention + Combine-Attention - Euc Distance - No Softmax - No Exp Decay - GLU (High Dim)')
 parser.add_argument('--start_poi', type=int, default=0)
 parser.add_argument('--end_poi', type=int, default=400)
 
