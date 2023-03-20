@@ -49,19 +49,18 @@ def load_model(model_dir, epoch=None):
     return model
 
 
-def inference(model, dataloader, device, node_cnt, window_size, horizon, static_features):
+def inference(model, dataloader, device, node_cnt, window_size, horizon):
     forecast_set = []
     target_set = []
     model.eval()
     with torch.no_grad():
-        for i, (inputs, target, static_features) in enumerate(dataloader):
+        for i, (inputs, target) in enumerate(dataloader):
             inputs = inputs.to(device)
             target = target.to(device)
-            static_features = static_features.to(device)
             step = 0
             forecast_steps = np.zeros([inputs.size()[0], horizon, node_cnt], dtype=np.float)
             while step < horizon:
-                forecast_result, attention_scores = model(inputs, static_features)
+                forecast_result, attention_scores = model(inputs)
                 len_model_output = forecast_result.size()[1]
                 if len_model_output == 0:
                     raise Exception('Get blank inference result')
@@ -78,12 +77,10 @@ def inference(model, dataloader, device, node_cnt, window_size, horizon, static_
 
 
 def validate(model, dataloader, device, normalize_method, statistic,
-             node_cnt, window_size, horizon,
-             static_features, result_file=None, nodes_num=None):
+             node_cnt, window_size, horizon, result_file=None, nodes_num=None):
     start = datetime.now()
     forecast_norm, target_norm, attention_scores = inference(model, dataloader, device,
-                                           node_cnt, window_size, horizon,
-                                           static_features=static_features)
+                                           node_cnt, window_size, horizon)
     if normalize_method and statistic:
         forecast = de_normalized(forecast_norm, normalize_method, statistic)
         target = de_normalized(target_norm, normalize_method, statistic)
@@ -125,25 +122,14 @@ def validate(model, dataloader, device, normalize_method, statistic,
 
 
 def train(wandb_logger, train_data, valid_data, args, result_file, 
-          static_features=None, cat_codes_dict=None, nodes_num=None,
-          dist_adj_mat=None):
+          nodes_num=None,
+          dist_adj_mat=None, semantic_embs=None):
     node_cnt = train_data.shape[1]
-    
-    #TODO: adding categorical varialbes
-    if static_features is not None:
-        # Note: '+1' in len(code) + 1 is due to the fact that we also take an index number for unknown labels, which is
-        # not included in the cat_codes_dict
-        embedding_size_dict = {col: len(code) + 1 for col, code in cat_codes_dict.items()}
-        embedding_dim_dict = {col: emb_sz_rule(embedding_size) for col, embedding_size in embedding_size_dict.items()}
-    else:
-        embedding_size_dict = None
-        embedding_dim_dict = None
     
     
     model = Model(wandb_logger, node_cnt, 2, 
                   args.window_size, args.multi_layer, horizon=args.horizon,
-                  embedding_size_dict=embedding_size_dict,
-                  embedding_dim_dict=embedding_dim_dict,
+                  semantic_embs=semantic_embs,
                   dist_adj=dist_adj_mat,
                   device=args.device)
     model = nn.DataParallel(model)
@@ -177,11 +163,9 @@ def train(wandb_logger, train_data, valid_data, args, result_file,
     my_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=my_optim, gamma=args.decay_rate)
 
     train_set = ForecastDataset(train_data, window_size=args.window_size, horizon=args.horizon,
-                                normalize_method=args.norm_method, norm_statistic=normalize_statistic,
-                                df_static_features=static_features)
+                                normalize_method=args.norm_method, norm_statistic=normalize_statistic)
     valid_set = ForecastDataset(valid_data, window_size=args.window_size, horizon=args.horizon,
-                                normalize_method=args.norm_method, norm_statistic=normalize_statistic,
-                                df_static_features=static_features)
+                                normalize_method=args.norm_method, norm_statistic=normalize_statistic)
     train_loader = torch_data.DataLoader(train_set, batch_size=args.batch_size, drop_last=False, shuffle=True,
                                          num_workers=0)
     valid_loader = torch_data.DataLoader(valid_set, batch_size=args.batch_size, shuffle=False, num_workers=0)
@@ -204,13 +188,11 @@ def train(wandb_logger, train_data, valid_data, args, result_file,
         model.train()
         loss_total = 0
         cnt = 0
-        for i, (inputs, target, static_features) in enumerate(train_loader):
+        for i, (inputs, target) in enumerate(train_loader):
             inputs = inputs.to(args.device)
             target = target.to(args.device)
-            static_features = static_features.to(args.device)
             model.zero_grad()
-            #TODO: change this static_features?
-            forecast, attention_scores = model(inputs, static_features)
+            forecast, attention_scores = model(inputs)
             loss = forecast_loss(forecast, target)
             cnt += 1
             loss.backward()
@@ -229,7 +211,7 @@ def train(wandb_logger, train_data, valid_data, args, result_file,
             performance_metrics = \
                 validate(model, valid_loader, args.device, args.norm_method, normalize_statistic,
                          node_cnt, args.window_size, args.horizon,
-                         static_features=static_features, result_file=result_file, nodes_num=nodes_num)
+                         result_file=result_file, nodes_num=nodes_num)
 
             wandb_logger.log("val_mae", performance_metrics['mae'],epoch)
             wandb_logger.log("val_mape",  performance_metrics['mape'], epoch)
@@ -249,7 +231,7 @@ def train(wandb_logger, train_data, valid_data, args, result_file,
     return performance_metrics, normalize_statistic
 
 
-def test(wandb_logger,test_data, args, result_train_file, result_test_file, static_features, nodes_num=None):
+def test(wandb_logger,test_data, args, result_train_file, result_test_file, nodes_num=None):
     with open(os.path.join(result_train_file, 'norm_stat.json'),'r') as f:
         normalize_statistic = json.load(f)
     model = load_model(result_train_file)
@@ -257,14 +239,12 @@ def test(wandb_logger,test_data, args, result_train_file, result_test_file, stat
     test_set = ForecastDataset(test_data, window_size=args.window_size, 
                                horizon=args.horizon,
                                normalize_method=args.norm_method, 
-                               norm_statistic=normalize_statistic,
-                               df_static_features=static_features)
+                               norm_statistic=normalize_statistic)
     test_loader = torch_data.DataLoader(test_set, batch_size=args.batch_size, drop_last=False,
                                         shuffle=False, num_workers=0)
     performance_metrics = validate(model, test_loader, args.device,
                                    args.norm_method, normalize_statistic, 
-                                   node_cnt, args.window_size, args.horizon, 
-                                   static_features=static_features, 
+                                   node_cnt, args.window_size, args.horizon,
                                    result_file=result_test_file,
                                    nodes_num=nodes_num)
     mae, mape, rmse = performance_metrics['mae'], performance_metrics['mape'], performance_metrics['rmse']

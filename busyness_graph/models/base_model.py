@@ -9,7 +9,7 @@ import torch_geometric.utils as pyg_utils
 class Model(nn.Module):
     def __init__(self,wandb_logger, units, stack_cnt, time_step,
                  multi_layer, horizon=1,
-                 embedding_size_dict=None, embedding_dim_dict=None,
+                 semantic_embs=None, semantic_embs_dim=168,
                  dropout_rate=0.5, leaky_rate=0.2,
                  device='cpu', gru_dim=128, num_heads=8,
                  dist_adj=None):
@@ -56,18 +56,21 @@ class Model(nn.Module):
             cell.flatten_parameters()
         
         #TODO: added embeddings layers here
-        self.embeddings, total_embedding_dim = self._create_embedding_layers(
-            embedding_size_dict, 
-            embedding_dim_dict,
-            device=device)
+        # self.embeddings, total_embedding_dim = self._create_embedding_layers(
+        #     embedding_size_dict, 
+        #     embedding_dim_dict,
+        #     device=device)
         
-        self.cat_cols = list(embedding_size_dict.keys())
+        self.semantic_embs = torch.from_numpy(semantic_embs).to(device).float()
+        
+        self.linear_semantic_embs = nn.Linear(self.semantic_embs.shape[1], semantic_embs_dim) 
+        
         
         
         self.multi_layer = multi_layer
         
        
-        self.node_feature_dim = time_step + total_embedding_dim
+        self.node_feature_dim = time_step + semantic_embs_dim
         
     
 
@@ -82,7 +85,7 @@ class Model(nn.Module):
 
         self.convs = nn.ModuleList()
 
-        self.conv_hidden_dim = 32
+        self.conv_hidden_dim = 64
         self.conv_layers_num = 3
 
         self.convs.append(pyg_nn.GCNConv(self.node_feature_dim, self.conv_hidden_dim)) 
@@ -104,13 +107,16 @@ class Model(nn.Module):
             self.dist_adj = torch.from_numpy(dist_adj).to(device).float()
 
         
-        self.attention_thres = AttentionThreshold(self.unit)
+        # self.attention_thres = AttentionThreshold(self.unit)
+        # self.thres = nn.Parameter(torch.tensor(0.15), requires_grad=True)
         
         # self.GLUs = nn.Sequential(
         #    GLU(self.node_feature_dim, self.node_feature_dim * 4),
         #    GLU(self.node_feature_dim*4, self.node_feature_dim * 4),
         #    GLU(self.node_feature_dim*4, self.node_feature_dim)
         # )
+        
+        self.att_alpha = nn.Parameter(torch.tensor(0.5), requires_grad=True)
 
         self.to(device)
 
@@ -139,6 +145,7 @@ class Model(nn.Module):
         _, attention = self.mhead_attention(weighted_res, weighted_res, weighted_res)
 
         attention = torch.mean(attention, dim=0) #[2000, 2000]
+        # attention = self._normalize_attention(attention)
 
         # attention is temporal attention. Combine it with spatial attention + add self-loops 
         # first use distance matrix as a gate
@@ -167,27 +174,25 @@ class Model(nn.Module):
         weighted_res = F.relu(weighted_res)
         # weighted_res = F.relu(weighted_res)
         
-        X = weighted_res.unsqueeze(1).permute(0, 1, 2, 3).contiguous() #TODO replace with above line
+        # X = weighted_res.unsqueeze(1).permute(0, 1, 2, 3).contiguous() #TODO replace with above line
+        X = weighted_res.permute(0, 1, 2).contiguous()
         #TODO: should I add the static features (e.g., POI category vec) here??
         #TODO: appending static features vec to X
-        if static_features is not None:
-            # run through all the categorical variables through its
-            # own embedding layer and concatenate them together
-            cat_outputs = []
-            for i, col in enumerate(self.cat_cols):
-                embedding = self.embeddings[col]
-                cat_output = embedding(static_features[:, i])
-                cat_outputs.append(cat_output)
+        if self.semantic_embs is not None:
+            transformed_embeds = self.linear_semantic_embs(self.semantic_embs.to(x.get_device()))
+            # transformed_embeds = self.semantic_embs.to(x.get_device())
+            transformed_embeds = transformed_embeds.unsqueeze(0).repeat(X.shape[0], 1, 1)
+            X = torch.cat((X, transformed_embeds), dim=2)
             
-            cat_outputs = torch.cat(cat_outputs, dim=2)
-            X = torch.cat((X, cat_outputs.unsqueeze(1)), dim=3)
-            
-        embed_att = self.get_embed_att_mat_euc(cat_outputs)
+        embed_att = self.get_embed_att_mat_cosine(transformed_embeds)
         self.dist_adj = self.dist_adj.to(x.get_device())
-        attention = (((self.dist_adj + embed_att)/2) * attention)
+        # attention = (((self.dist_adj + embed_att)/2) * attention)
+        attention = ((self.att_alpha*self.dist_adj) + (1-self.att_alpha)*embed_att) * attention
         # attention = ((self.dist_adj + embed_att) * attention)
         
-        attention_mask = self.attention_thres(attention)
+        attention_mask = self.case_amplf_mask(attention)
+        
+        # attention_mask = self.attention_thres(attention)
         attention[~attention_mask] = 0
         
         edge_indices, edge_attrs = pyg_utils.dense_to_sparse(attention)
@@ -219,6 +224,40 @@ class Model(nn.Module):
             embeddings[col] = nn.Embedding(embedding_size, embedding_dim, device=device)
             
         return nn.ModuleDict(embeddings), total_embedding_dim
+    
+    
+    def _normalize_attention(self, attention):
+        # Normalize each row of the attention matrix
+        max_scores, _ = torch.max(attention, dim=1, keepdim=True)
+        norm_scores = attention / max_scores
+        return norm_scores
+    
+    
+    def case_amplf_mask(self, attention, p=2.5, threshold=0.15):
+        '''
+        This function computes the case amplification mask for a 2D attention tensor 
+        with the given amplification factor p.
+
+        Parameters:
+            - attention (torch.Tensor): A 2D attention tensor of shape [n, n].
+            - p (float): The case amplification factor (default: 2.5).
+            - threshold (float): The threshold for the mask (default: 0.05).
+
+        Returns:
+            - mask (torch.Tensor): A 2D binary mask of the same size as `attention`,
+              where 0s denote noisy elements and 1s denote clean elements.
+        '''
+        # Compute the maximum value in the attention tensor
+        max_val, _ = torch.max(attention.detach(), dim=1, keepdim=True)
+
+        # Compute the mask as per the case amplification formula
+        mask = (attention.detach() / max_val) ** p
+
+        # Turn the mask into a binary matrix, where anything below threshold will be considered as zero
+        mask = torch.where(mask > threshold, torch.tensor(1).to(attention.device), torch.tensor(0).to(attention.device))
+        return mask
+        
+        
     
     
     def get_embed_att_mat_cosine(self, embed_tensor):
@@ -256,7 +295,7 @@ class Model(nn.Module):
 
 
 class AttentionThreshold(nn.Module):
-    def __init__(self, input_size, threshold_value=0.002):
+    def __init__(self, input_size, threshold_value=0.0012):
         super().__init__()
         self.threshold = nn.Parameter(torch.tensor(threshold_value), requires_grad=True)
 

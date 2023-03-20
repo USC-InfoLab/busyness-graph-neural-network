@@ -3,6 +3,7 @@ import pandas as pd
 import time, os, math
 from scipy.signal import savgol_filter
 import ast
+from sentence_transformers import SentenceTransformer
 
 
 
@@ -159,3 +160,41 @@ def get_dist_adj_mat(df, nodes_num):
     adj_mat[:, nodes_num:] = 1
     adj_mat[nodes_num:, :] = 1
     return adj_mat
+
+
+def get_semantic_embs(dataframe, end_poi_num, start_poi_num):
+    df = dataframe.copy()
+    df['phone_number'] = df['phone_number'].fillna(0)
+    df['postal_code'] = df['postal_code'].fillna(0)
+    df['phone_number'] = df['phone_number'].astype(int)
+    df['postal_code'] = df['postal_code'].astype(int)
+    # Create sentences for each POI using as many columns as possible
+    sentences = []
+    # replace all nan values in columns 'location_name', 'street_address, 'city', 'region', 'postal_code', 'open_hours', 'phone_number', 'top_category', 'sub_category' with "unknown"
+    columns_to_fill = ['location_name', 'street_address', 'city', 'region', 'postal_code', 'open_hours', 'phone_number', 'top_category', 'sub_category']
+    for col in columns_to_fill:
+        df[col] = df[col].fillna('unknown')
+        if col == 'phone_number' or col == 'postal_code':
+            df[col] = df[col].replace(0, 'unknown')
+    # create a sentence description for each POI
+    for index, row in df.iterrows():
+        poi_details = f"This point of interest is {row['location_name']} located at {row['street_address']}, {row['city']}, {row['region']}, {row['postal_code']}. It is open for business during {row['open_hours']} and can be contacted by phone at {row['phone_number']}. This location belongs to the top category {row['top_category']}, with sub-category {row['sub_category']}."
+        poi_details = poi_details.replace('unknown, unknown, unknown, unknown', 'unknown')
+        # add sentences to the list
+        sentences.append(poi_details)
+        if index >= end_poi_num - start_poi_num - 1:
+            break
+    # create a sentence description for each meta-node
+    for index, row in df.iloc[end_poi_num - start_poi_num:len(df)].iterrows():
+        if row['top_category'] == 'Global':
+            # meta-node represents all POIs in a city
+            meta_node_details = f"This is the meta node that represents all the points of interests in {df.loc[0, 'city']}."
+        else:
+            # meta-node represents a category in a city
+            meta_node_details = f"This is the meta node that represents all the points of interests in {df.loc[0, 'city']} that belong to the category {row['top_category']}."
+        sentences.append(meta_node_details)
+    
+    model = SentenceTransformer('sentence-transformers/all-mpnet-base-v2')
+    embeddings = model.encode(sentences)
+    return embeddings
+    

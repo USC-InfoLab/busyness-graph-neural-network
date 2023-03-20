@@ -14,7 +14,7 @@ import ast
 from utils.math_utils import evaluate
 from utils.math_utils import WandbLogger
 from utils.data_utils import get_merged_df, get_full_df, load_poi_db, smooth_poi
-from utils.data_utils import get_cat_codes, get_cat_codes_df, get_globals_df
+from utils.data_utils import get_cat_codes, get_cat_codes_df, get_semantic_embs
 from utils.data_utils import get_globs_types_df, get_dist_adj_mat
 import time, pickle
 
@@ -62,7 +62,7 @@ parser.add_argument('--leakyrelu_rate', type=int, default=0.2)
 parser.add_argument('--is_wandb_used', type=bool, default=True)
 parser.add_argument("--gpu_devices", type=int, nargs='+', default=0, help="")
 parser.add_argument("--cache_data", type=bool, default=True)
-parser.add_argument("--run_identity", type=str, default='GRU Attention + Combine-Attention - Euc Distance - No Softmax - No Exp Decay - GLU (High Dim)')
+parser.add_argument("--run_identity", type=str, default='GRU Attention + Combine-Attention - Language model embs - No Softmax - Case Ampl Thres - No Exp Decay - GLU (High Dim)')
 parser.add_argument('--start_poi', type=int, default=0)
 parser.add_argument('--end_poi', type=int, default=400)
 
@@ -145,11 +145,8 @@ train_data = data[:train_days*24]
 valid_data = data[train_days*24:(train_days + valid_days)*24]
 test_data = data[(train_days + valid_days)*24:(train_days + valid_days+test_days)*24]
 
-# TODO: Should I keep this (indexes for categorical variables)
-cat_codes_dict = get_cat_codes(data_frame, CAT_COLS)
-cat_codes_df = get_cat_codes_df(data_frame, cat_codes_dict)
-# cat_static_features = get_cat_static_features(cat_codes_df, args.device)
 
+semantic_embs = get_semantic_embs(data_frame, args.end_poi, args.start_poi)
 
 print(f"train {train_data.shape} valid {valid_data.shape} test {test_data.shape}")
 
@@ -164,11 +161,10 @@ if __name__ == '__main__':
         try:
             before_train = datetime.now().timestamp()
             _, normalize_statistic = train(wandb_logger,train_data, valid_data,
-                                           args, result_train_file, 
-                                           data_frame[CAT_COLS],
-                                           cat_codes_dict,
+                                           args, result_train_file,
                                            nodes_num=args.end_poi-args.start_poi,
-                                           dist_adj_mat=dist_adj_mat)
+                                           dist_adj_mat=dist_adj_mat,
+                                           semantic_embs=semantic_embs)
             after_train = datetime.now().timestamp()
             print(f'Training took {(after_train - before_train) / 60} minutes')
         except KeyboardInterrupt:
@@ -177,7 +173,7 @@ if __name__ == '__main__':
     if args.evaluate:
         before_evaluation = datetime.now().timestamp()
         test(wandb_logger, test_data, args, result_train_file, result_test_file,
-             data_frame[CAT_COLS], nodes_num=args.end_poi-args.start_poi)
+             nodes_num=args.end_poi-args.start_poi)
         after_evaluation = datetime.now().timestamp()
         print(f'Evaluation took {(after_evaluation - before_evaluation) / 60} minutes')
     print('done')

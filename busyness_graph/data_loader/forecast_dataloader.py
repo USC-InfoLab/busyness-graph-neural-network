@@ -72,9 +72,9 @@ class ForecastDataset(torch_data.Dataset):
         y = torch.from_numpy(target_data).type(torch.float)
         if self.uses_static_fetures:
             static_features = torch.from_numpy(self.cat_codes_df.to_numpy().T)
+            return x, y, static_features
         else:
-            static_features = None
-        return x, y, static_features
+            return x, y
 
     def __len__(self):
         return len(self.x_end_idx)
