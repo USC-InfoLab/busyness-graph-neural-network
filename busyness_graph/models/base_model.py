@@ -16,76 +16,48 @@ class Model(nn.Module):
         super(Model, self).__init__()
         self.gru_dim = gru_dim
         self.wandb_logger=wandb_logger
-        self.unit = units
-        self.stack_cnt = stack_cnt
+        # self.stack_cnt = stack_cnt
         self.unit = units
         self.alpha = leaky_rate
+        self.drop_out = nn.Dropout(p=dropout_rate)
         self.time_step = time_step
         self.horizon = horizon
-        self.weight_key = nn.Parameter(torch.zeros(size=(self.unit, 1)))
-        nn.init.xavier_uniform_(self.weight_key.data, gain=1.414)
-        self.weight_query = nn.Parameter(torch.zeros(size=(self.unit, 1)))
-        nn.init.xavier_uniform_(self.weight_query.data, gain=1.414)
-        # TODO: Remove batch_first flag
-        # self.GRU = nn.GRU(self.time_step, self.unit) TODO: Uncomment
-        # TODO STG1
         self.seq1 = nn.Sequential(
-            nn.Linear(1, 32),
+            nn.Linear(1, 64),
             nn.ReLU(),
-            nn.Linear(32, 64),
+            nn.Linear(64, 128),
             nn.ReLU(),
             nn.Dropout(dropout_rate)
         )
-        # self.GRU = nn.GRU(128, self.unit, batch_first=True)
         self.layer_norm = nn.LayerNorm(self.gru_dim)
-        self.param_eps = nn.Parameter(torch.tensor(0.0))
-        self.param_t = nn.Parameter(torch.tensor(1.0))
-        # TODO: REMOVE time_attention
-        # TODO STG1
         self.time_attention = Attention(self.gru_dim, self.gru_dim)
-        # TODO: Remove multiheadattention layer
         self.mhead_attention = nn.MultiheadAttention(self.gru_dim, num_heads, dropout_rate, device=device, batch_first=True)
         
         self.GRU_cells = nn.ModuleList(
-            nn.GRU(64, gru_dim, batch_first=True) for _ in range(self.unit)
+            nn.GRU(128, gru_dim, batch_first=True) for _ in range(self.unit)
         )
         
-        self.fc_ta = nn.Linear(gru_dim, self.time_step) #TODO remove this
+        # self.fc_ta = nn.Linear(gru_dim, self.time_step) #TODO remove this
+        self.fc_ta = nn.Linear(gru_dim, 128)
         
         for i, cell in enumerate(self.GRU_cells):
             cell.flatten_parameters()
-        
-        #TODO: added embeddings layers here
-        # self.embeddings, total_embedding_dim = self._create_embedding_layers(
-        #     embedding_size_dict, 
-        #     embedding_dim_dict,
-        #     device=device)
+
         
         self.semantic_embs = torch.from_numpy(semantic_embs).to(device).float()
         
         self.linear_semantic_embs = nn.Linear(self.semantic_embs.shape[1], semantic_embs_dim) 
-        
-        
-        
-        self.multi_layer = multi_layer
-        
+                
        
-        self.node_feature_dim = time_step + semantic_embs_dim
+        # self.node_feature_dim = time_step + semantic_embs_dim
+        self.node_feature_dim = 128 + semantic_embs_dim
         
     
-
-        
-        # TODO BLOCK ENDS: Is this alright for adding static features??
-        
-        
-        self.leakyrelu = nn.LeakyReLU(self.alpha)
-        self.dropout = nn.Dropout(p=dropout_rate)
-  
 
 
         self.convs = nn.ModuleList()
 
-        self.conv_hidden_dim = 64
+        self.conv_hidden_dim = 32
         self.conv_layers_num = 3
 
         self.convs.append(pyg_nn.GCNConv(self.node_feature_dim, self.conv_hidden_dim)) 
@@ -95,8 +67,8 @@ class Model(nn.Module):
 
 
         self.fc = nn.Sequential(
-            nn.Linear(int(self.conv_hidden_dim), int(self.node_feature_dim)),
-            nn.LeakyReLU(),
+            nn.Linear(int(self.conv_hidden_dim + self.node_feature_dim), int(self.node_feature_dim)),
+            nn.ReLU(),
             nn.Linear(int(self.node_feature_dim), self.horizon),
             # nn.Tanh(), #TODO: Delete this line
         )
@@ -113,10 +85,39 @@ class Model(nn.Module):
         # self.GLUs = nn.Sequential(
         #    GLU(self.node_feature_dim, self.node_feature_dim * 4),
         #    GLU(self.node_feature_dim*4, self.node_feature_dim * 4),
+        #    GLU(self.node_feature_dim*4, self.node_feature_dim * 4),
         #    GLU(self.node_feature_dim*4, self.node_feature_dim)
         # )
         
         self.att_alpha = nn.Parameter(torch.tensor(0.5), requires_grad=True)
+
+        # initialize weights using xavier
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    m.bias.data.zero_()
+            elif isinstance(m, nn.GRU):
+                for name, param in m.named_parameters():
+                    if 'weight' in name:
+                        nn.init.xavier_normal_(param)
+                    elif 'bias' in name:
+                        param.data.zero_()
+            elif isinstance(m, nn.LayerNorm):
+                m.bias.data.zero_()
+                m.weight.data.fill_(1.0)
+            elif isinstance(m, nn.Dropout):
+                m.p = dropout_rate
+            elif isinstance(m, nn.MultiheadAttention):
+                nn.init.xavier_uniform_(m.in_proj_weight)
+                nn.init.xavier_uniform_(m.out_proj.weight)
+                m.in_proj_bias.data.zero_()
+                m.out_proj.bias.data.zero_()  
+            elif isinstance(m, GLU):
+                nn.init.xavier_uniform_(m.fc_left.weight)
+                m.fc_left.bias.data.zero_()     
+                nn.init.xavier_uniform_(m.fc_right.weight)  
+                m.fc_right.bias.data.zero_()
 
         self.to(device)
 
@@ -145,6 +146,7 @@ class Model(nn.Module):
         _, attention = self.mhead_attention(weighted_res, weighted_res, weighted_res)
 
         attention = torch.mean(attention, dim=0) #[2000, 2000]
+        attention = self.drop_out(attention)
         # attention = self._normalize_attention(attention)
 
         # attention is temporal attention. Combine it with spatial attention + add self-loops 
@@ -200,12 +202,13 @@ class Model(nn.Module):
         # X = self.GLUs(X)
 
         
-
-        result = []
-        for stack_i in range(self.conv_layers_num):
-            X = self.convs[stack_i](X, edge_indices, edge_attrs)
-            X = F.relu(X)
-        forecast = self.fc(X)
+        X_gnn = self.convs[0](X, edge_indices, edge_attrs)
+        X_gnn = F.relu(X_gnn)
+        for stack_i in range(1, self.conv_layers_num):
+            X_gnn = self.convs[stack_i](X_gnn, edge_indices, edge_attrs)
+            X_gnn = F.relu(X_gnn)
+        X_hat = torch.cat((X, X_gnn), dim=2)
+        forecast = self.fc(X_hat)
         if forecast.size()[-1] == 1:
             return forecast.unsqueeze(1).squeeze(-1), attention.unsqueeze(0)
         else:

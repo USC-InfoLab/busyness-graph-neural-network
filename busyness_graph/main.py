@@ -43,9 +43,9 @@ parser.add_argument('--evaluate', type=bool, default=True)
 parser.add_argument('--dataset', type=str, default='Houston')
 parser.add_argument('--window_size', type=int, default=168)
 parser.add_argument('--horizon', type=int, default=6)
-parser.add_argument('--train_ratio', type=float, default=0.7)
+parser.add_argument('--train_ratio', type=float, default=0.75)
 parser.add_argument('--valid_ratio', type=float, default=0.2)
-parser.add_argument('--test_length', type=float, default=0.1)
+parser.add_argument('--test_length', type=float, default=0.05)
 parser.add_argument('--epoch', type=int, default=40)
 parser.add_argument('--lr', type=float, default=3e-4)
 parser.add_argument('--multi_layer', type=int, default=1)
@@ -129,6 +129,9 @@ else:
 
 data = pd.DataFrame(data_frame["visits_by_each_hour"].to_list()).T
 args.n_route = data.shape[-1]
+
+# # shuffle the data
+# data = data.sample(frac=1).reset_index(drop=True)
 
 # split data
 days = int(data.shape[0] / 24)
