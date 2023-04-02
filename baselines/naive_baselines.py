@@ -121,8 +121,9 @@ def get_data(city):
     valid_days = int(TOTAL_DAYS * VALID_RATIO)
     test_days = TOTAL_DAYS - train_days - valid_days
     valid_dates = time_span[train_days*24 + WINDOW_SIZE:(train_days + valid_days)*24 - HORIZON + 1]
+    test_dates = time_span[(train_days + valid_days)*24 + WINDOW_SIZE:]
     
-    return data, valid_dates
+    return data, valid_dates, test_dates
 
 
 def get_target(data, city, valid_dates, save=False):
@@ -159,9 +160,9 @@ def historical_avg_fcast(data, valid_dates, num_weeks = 4, save=False):
 
 
 def eval(city, start_poi, end_poi):
-    hist_avg_val_prediction_path = f'output/baselines/{city}/historical_avg_forecasts.csv'
-    naive_seas_val_prediction_path = f'output/baselines/{city}/naive_seasonal_forecasts.csv'
-    val_target_path = f'output/baselines/{city}/target.csv'
+    hist_avg_val_prediction_path = f'./output/baselines/{city}/historical_avg_forecasts.csv'
+    naive_seas_val_prediction_path = f'./output/baselines/{city}/naive_seasonal_forecasts.csv'
+    val_target_path = f'./output/baselines/{city}/target.csv'
     hist_avg_val_predict_df = pd.read_csv(hist_avg_val_prediction_path, header=None).to_numpy()[:, start_poi:end_poi]
     naive_seas_val_predict_df = pd.read_csv(naive_seas_val_prediction_path, header=None).to_numpy()[:, start_poi:end_poi]
     val_target_df = pd.read_csv(val_target_path, header=None).to_numpy()[:, start_poi:end_poi]
@@ -197,13 +198,14 @@ def eval_all_cities(start_poi=0, end_poi=400):
 def main():
     if not os.path.exists(OUTPUT_DIRECTORY):
         os.makedirs(OUTPUT_DIRECTORY)
-    # data, valid_dates = get_data(CITY)
-    # target = get_target(data, CITY, valid_dates, save=True)
-    # naive_forecasts = naive_seasonal_fcast(data, valid_dates, save=True)
-    # hist_avg_fcasts = historical_avg_fcast(data, valid_dates, save=True)
+    # data, valid_dates, test_dates = get_data(CITY)
+    # # target = get_target(data, CITY, valid_dates, save=True)
+    # target = get_target(data, CITY, test_dates, save=True)
+    # naive_forecasts = naive_seasonal_fcast(data, test_dates, save=True)
+    # hist_avg_fcasts = historical_avg_fcast(data, test_dates, save=True)
     eval_all_cities()
     print('\n\n\n\n')
-    eval_all_cities(0, 20)
+    eval_all_cities(0, 40)
     
     
     
