@@ -1,1 +1,0 @@
-python main.py --epoch 1000 --lr 1e-4 --batch_size 128 --exponential_decay_step 25 --dropout_rate 0.3 --start_poi 1000 --end_poi 1100

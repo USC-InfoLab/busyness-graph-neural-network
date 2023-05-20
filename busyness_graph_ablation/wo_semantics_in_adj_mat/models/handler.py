@@ -60,7 +60,7 @@ def inference(model, dataloader, device, node_cnt, window_size, horizon):
             step = 0
             forecast_steps = np.zeros([inputs.size()[0], horizon, node_cnt], dtype=np.float)
             while step < horizon:
-                forecast_result, attention_scores, _ = model(inputs)
+                forecast_result, attention_scores = model(inputs)
                 len_model_output = forecast_result.size()[1]
                 if len_model_output == 0:
                     raise Exception('Get blank inference result')
@@ -192,7 +192,7 @@ def train(wandb_logger, train_data, valid_data, args, result_file,
             inputs = inputs.to(args.device)
             target = target.to(args.device)
             model.zero_grad()
-            forecast, attention_scores, _ = model(inputs)
+            forecast, attention_scores = model(inputs)
             loss = forecast_loss(forecast, target)
             cnt += 1
             loss.backward()

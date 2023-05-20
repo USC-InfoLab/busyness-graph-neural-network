@@ -50,7 +50,8 @@ class Model(nn.Module):
                 
        
         # self.node_feature_dim = time_step + semantic_embs_dim
-        self.node_feature_dim = 128 + semantic_embs_dim
+        # self.node_feature_dim = 128 + semantic_embs_dim
+        self.node_feature_dim = 128
         
     
 
@@ -165,7 +166,6 @@ class Model(nn.Module):
 
     def forward(self, x, static_features=None):
         attention, weighted_res = self.latent_correlation_layer(x) # TODO replace with above line
-        mhead_att_mat = attention.detach().clone()
 
         # attention_mask = self.attention_thres(attention)
         # attention[~attention_mask] = 0
@@ -185,25 +185,22 @@ class Model(nn.Module):
             transformed_embeds = self.linear_semantic_embs(self.semantic_embs.to(x.get_device()))
             # transformed_embeds = self.semantic_embs.to(x.get_device())
             transformed_embeds = transformed_embeds.unsqueeze(0).repeat(X.shape[0], 1, 1)
-            X = torch.cat((X, transformed_embeds), dim=2)
+            # X = torch.cat((X, transformed_embeds), dim=2)
             
         embed_att = self.get_embed_att_mat_cosine(transformed_embeds)
         self.dist_adj = self.dist_adj.to(x.get_device())
         # attention = (((self.dist_adj + embed_att)/2) * attention)
         attention = ((self.att_alpha*self.dist_adj) + (1-self.att_alpha)*embed_att) * attention
-        adj_mat_unthresholded = attention.detach().clone()
         # attention = ((self.dist_adj + embed_att) * attention)
         
         attention_mask = self.case_amplf_mask(attention)
         
         # attention_mask = self.attention_thres(attention)
         attention[~attention_mask] = 0
-        adj_mat_thresholded = attention.detach().clone()
         
         edge_indices, edge_attrs = pyg_utils.dense_to_sparse(attention)
         
         # X = self.GLUs(X)
-        
 
         
         X_gnn = self.convs[0](X, edge_indices, edge_attrs)
@@ -214,9 +211,9 @@ class Model(nn.Module):
         X_hat = torch.cat((X, X_gnn), dim=2)
         forecast = self.fc(X_hat)
         if forecast.size()[-1] == 1:
-            return forecast.unsqueeze(1).squeeze(-1), attention.unsqueeze(0), (adj_mat_thresholded, adj_mat_unthresholded, embed_att, self.dist_adj, mhead_att_mat)
+            return forecast.unsqueeze(1).squeeze(-1), attention.unsqueeze(0)
         else:
-            return forecast.squeeze(1).permute(0, 2, 1).contiguous(), attention.unsqueeze(0), (adj_mat_thresholded, adj_mat_unthresholded, embed_att, self.dist_adj, mhead_att_mat)
+            return forecast.squeeze(1).permute(0, 2, 1).contiguous(), attention.unsqueeze(0)
         
     
     def _create_embedding_layers(self, embedding_size_dict, embedding_dim_dict, device):
