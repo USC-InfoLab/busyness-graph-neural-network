@@ -42,7 +42,8 @@ def get_merged_df(csv_path, start_row, end_row, total_days):
 
 
 def load_poi_db(city):
-    poi_folder = "/storage/dataset/poi_haowen/CoreRecords-CORE_POI-2019_03-2020-03-25/"
+    # poi_folder = "/storage/dataset/poi_haowen/CoreRecords-CORE_POI-2019_03-2020-03-25/"
+    poi_folder = "/storage/datasets_public/busyness_graph_dataset/CoreRecords-CORE_POI-2019_03-2020-03-25/"
     poi_columns = ["safegraph_place_id", "parent_safegraph_place_id", "location_name", "safegraph_brand_ids", "brands",
                    "top_category", "sub_category", "naics_code", "latitude", "longitude", "street_address", "city",
                    "region", "postal_code", "iso_country_code", "phone_number", "open_hours", "category_tags"]
@@ -56,7 +57,8 @@ def load_poi_db(city):
             print(f)
             df = pd.read_csv(poi_folder + f)
             df = df.loc[df['city']==city]
-            poi_db = poi_db.append(df, ignore_index=True, sort=False)
+            # poi_db = poi_db.append(df, ignore_index=True, sort=False)
+            poi_db = pd.concat([poi_db, df], ignore_index=True, sort=False)
             poi_s.memory_usage_in_GB += df.memory_usage(deep=True).sum() / 1000000000
             poi_s.data_record_count += df.shape[0]
             poi_s.parquet_file_count += 1
@@ -88,7 +90,8 @@ def get_globals_df(df, glob_num_cols=5):
     new_df['safegraph_place_id'] = [f'Glob_{i}' for i in range(len(new_df))]
     new_df['top_category'] = [f'Global' for i in range(len(new_df))]
     new_df['sub_category'] = [f'Global' for i in range(len(new_df))]
-    res_df = res_df.append(new_df, ignore_index=True)
+    # res_df = res_df.append(new_df, ignore_index=True)
+    res_df = pd.concat([res_df, new_df], ignore_index=True, sort=False)
     return res_df
 
 
@@ -105,7 +108,8 @@ def get_globs_types_df(df, cat_col):
     glob_df['sub_category'] = ['Global' for i in range(len(glob_df))]
     glob_df['safegraph_place_id'] = [f'Category_Global_{i}' for i in range(len(glob_df))]
     res_df = get_globals_df(df, 5*math.ceil(glob_df.shape[0]/5) - glob_df.shape[0])
-    res_df = res_df.append(glob_df, ignore_index=True)
+    # res_df = res_df.append(glob_df, ignore_index=True)
+    res_df = pd.concat([res_df, glob_df], ignore_index=True, sort=False)
     return res_df
     
 

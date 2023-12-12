@@ -59,7 +59,7 @@ parser.add_argument('--exponential_decay_step', type=int, default=5)
 parser.add_argument('--decay_rate', type=float, default=0.5)
 parser.add_argument('--dropout_rate', type=float, default=0.5)
 parser.add_argument('--leakyrelu_rate', type=int, default=0.2)
-parser.add_argument('--is_wandb_used', type=bool, default=True)
+parser.add_argument('--is_wandb_used', type=bool, default=False)
 parser.add_argument("--gpu_devices", type=int, nargs='+', default=0, help="")
 parser.add_argument("--cache_data", type=bool, default=True)
 parser.add_argument("--run_identity", type=str, default='GRU Attention + Combine-Attention - Language model embs - No Softmax - Case Ampl Thres - No Exp Decay - GLU (High Dim)')
@@ -83,8 +83,11 @@ if not os.path.exists(result_test_file):
 
 # csv_path = '/storage/dataset/poi_haowen/Houston/Housron_2019-12-30_2020-06-08.csv'
 # csv_path  ='/root/dataset_all/poi_forecast/Houston/Houston_2019-12-30_2020-06-08.csv'
-csv_path = f'/home/users/arash/datasets/safegraph/weekly_patterns_2019-01-07_2020-06-08_{args.dataset}.csv'
-poi_info_csv_path = '/home/users/arash/datasets/safegraph/core_poi_info_2019-01-07_2020-06-08.csv'
+# csv_path = f'/home/users/arash/datasets/safegraph/weekly_patterns_2019-01-07_2020-06-08_{args.dataset}.csv'
+# poi_info_csv_path = '/home/users/arash/datasets/safegraph/core_poi_info_2019-01-07_2020-06-08.csv'
+
+csv_path = f'/storage/datasets_public/busyness_graph_dataset/weekly_patterns_2019-01-07_2020-06-08_{args.dataset}.csv'
+poi_info_csv_path = '/storage/datasets_public/busyness_graph_dataset/core_poi_info_2019-01-07_2020-06-08.csv'
 
 
 # def get_good_poi(df):
