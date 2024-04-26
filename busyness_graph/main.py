@@ -40,8 +40,8 @@ torch.backends.cudnn.deterministic = True
 parser = argparse.ArgumentParser()
 parser.add_argument('--train', type=bool, default=True)
 parser.add_argument('--evaluate', type=bool, default=True)
-parser.add_argument('--dataset', type=str, default='Houston')
-parser.add_argument('--window_size', type=int, default=168)
+parser.add_argument('--dataset', type=str, default='Houston') # TODO: select the appropriate city
+parser.add_argument('--window_size', type=int, default=24)
 parser.add_argument('--horizon', type=int, default=6)
 parser.add_argument('--train_ratio', type=float, default=0.7)
 parser.add_argument('--valid_ratio', type=float, default=0.2)
@@ -59,12 +59,12 @@ parser.add_argument('--exponential_decay_step', type=int, default=5)
 parser.add_argument('--decay_rate', type=float, default=0.5)
 parser.add_argument('--dropout_rate', type=float, default=0.5)
 parser.add_argument('--leakyrelu_rate', type=int, default=0.2)
-parser.add_argument('--is_wandb_used', type=bool, default=False)
+parser.add_argument('--is_wandb_used', type=bool, default=False) # TODO: change to True if you want to log on WanDB
 parser.add_argument("--gpu_devices", type=int, nargs='+', default=0, help="")
 parser.add_argument("--cache_data", type=bool, default=True)
 parser.add_argument("--run_identity", type=str, default='GRU Attention + Combine-Attention - Language model embs - No Softmax - Case Ampl Thres - No Exp Decay - GLU (High Dim)')
 parser.add_argument('--start_poi', type=int, default=0)
-parser.add_argument('--end_poi', type=int, default=400)
+parser.add_argument('--end_poi', type=int, default=400) #TODO: How many POIs do you need for experiments
 
 
 args = parser.parse_args()
@@ -120,7 +120,7 @@ else:
     #TODO: Remove this line?
     # data_frame = get_globals_df(data_frame)
 
-    data_frame = get_globs_types_df(data_frame, 'top_category')
+    data_frame = get_globs_types_df(data_frame, 'top_category') # TODO: get meta-nodes. Do this based on SpaBERT clusters instead.
 
     # data_frame.to_csv('full_dataset.csv', index=False)
 
@@ -152,13 +152,13 @@ valid_data = data[train_days*24:(train_days + valid_days)*24]
 test_data = data[(train_days + valid_days)*24:(train_days + valid_days+test_days)*24]
 
 
-semantic_embs = get_semantic_embs(data_frame, args.end_poi, args.start_poi)
+semantic_embs = get_semantic_embs(data_frame, args.end_poi, args.start_poi) # TODO: get semantic embeddings based on SpaBERT. This is the semantic embeddings before fine-tuning
 
 print(f"train {train_data.shape} valid {valid_data.shape} test {test_data.shape}")
 
 run_name = f'{args.dataset}-{args.start_poi}-{args.end_poi}-w:{args.window_size}-h:{args.horizon}-{args.run_identity}-{str(datetime.now().strftime("%Y-%m-%d %H:%M"))}'
 
-dist_adj_mat = get_dist_adj_mat(data_frame, nodes_num=args.end_poi-args.start_poi)
+dist_adj_mat = get_dist_adj_mat(data_frame, nodes_num=args.end_poi-args.start_poi) # This is the distance similarity matrix 
 
 wandb_logger = WandbLogger("POI_forecast", args.is_wandb_used, run_name)
 wandb_logger.log_hyperparams(args)

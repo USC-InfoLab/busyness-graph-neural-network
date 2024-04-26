@@ -125,6 +125,7 @@ class Model(nn.Module):
 
 
     def latent_correlation_layer(self, x):
+        # x is x' in paper
         batch_size, _, node_cnt = x.shape
         window = x.shape[1]
         new_x = x.permute(2, 0, 1)
@@ -143,7 +144,7 @@ class Model(nn.Module):
             weighted = torch.bmm(updated_weights, gru_outputs)
             weighted = weighted.squeeze(1)
             weighted_res[:, i, :] = self.layer_norm(weighted + hid)
-        _, attention = self.mhead_attention(weighted_res, weighted_res, weighted_res)
+        _, attention = self.mhead_attention(weighted_res, weighted_res, weighted_res) # weighted res is C in paper
 
         attention = torch.mean(attention, dim=0) #[2000, 2000]
         attention = self.drop_out(attention)
@@ -164,6 +165,7 @@ class Model(nn.Module):
 
 
     def forward(self, x, static_features=None):
+        # x shape is (batch, window_size, node_cnt)
         attention, weighted_res = self.latent_correlation_layer(x) # TODO replace with above line
         mhead_att_mat = attention.detach().clone()
 
@@ -182,38 +184,43 @@ class Model(nn.Module):
         #TODO: should I add the static features (e.g., POI category vec) here??
         #TODO: appending static features vec to X
         if self.semantic_embs is not None:
-            transformed_embeds = self.linear_semantic_embs(self.semantic_embs.to(x.get_device()))
+            transformed_embeds = self.linear_semantic_embs(self.semantic_embs.to(x.get_device())) # TODO: transformed_embeds is the semantic embeddings after finetuning
             # transformed_embeds = self.semantic_embs.to(x.get_device())
             transformed_embeds = transformed_embeds.unsqueeze(0).repeat(X.shape[0], 1, 1)
-            X = torch.cat((X, transformed_embeds), dim=2)
+            X = torch.cat((X, transformed_embeds), dim=2) # X is V in paper --> Node features
             
-        embed_att = self.get_embed_att_mat_cosine(transformed_embeds)
+        embed_att = self.get_embed_att_mat_cosine(transformed_embeds) # This is cosine similarity between semantic embeddings
         self.dist_adj = self.dist_adj.to(x.get_device())
         # attention = (((self.dist_adj + embed_att)/2) * attention)
-        attention = ((self.att_alpha*self.dist_adj) + (1-self.att_alpha)*embed_att) * attention
+        attention = ((self.att_alpha*self.dist_adj) + (1-self.att_alpha)*embed_att) * attention # This is to combine all 3 similarity matrices
         adj_mat_unthresholded = attention.detach().clone()
         # attention = ((self.dist_adj + embed_att) * attention)
         
-        attention_mask = self.case_amplf_mask(attention)
+        attention_mask = self.case_amplf_mask(attention) # This is the thresholding step for final adjacency matrix
         
         # attention_mask = self.attention_thres(attention)
         attention[~attention_mask] = 0
-        adj_mat_thresholded = attention.detach().clone()
+        adj_mat_thresholded = attention.detach().clone() # attention is the final adjacency matrix (S hat in paper)
         
         edge_indices, edge_attrs = pyg_utils.dense_to_sparse(attention)
+        # [1, 1, 2]
+        # [3, 4, 3]
+        # weights: [0.7, 0.8, 0.9]
         
         # X = self.GLUs(X)
         
 
-        
+        # This loop runs the graph convolution
         X_gnn = self.convs[0](X, edge_indices, edge_attrs)
         X_gnn = F.relu(X_gnn)
         for stack_i in range(1, self.conv_layers_num):
             X_gnn = self.convs[stack_i](X_gnn, edge_indices, edge_attrs)
             X_gnn = F.relu(X_gnn)
-        X_hat = torch.cat((X, X_gnn), dim=2)
-        forecast = self.fc(X_hat)
+        X_hat = torch.cat((X, X_gnn), dim=2) # X_hat is the concatenation of node embeddings before graph convolution and after
+        
+        forecast = self.fc(X_hat) # This maps the node embeddings to the desired forecasting horizon
         if forecast.size()[-1] == 1:
+            # forecast is the desired forecast, attention is the final adjacecncy matrix
             return forecast.unsqueeze(1).squeeze(-1), attention.unsqueeze(0), (adj_mat_thresholded, adj_mat_unthresholded, embed_att, self.dist_adj, mhead_att_mat)
         else:
             return forecast.squeeze(1).permute(0, 2, 1).contiguous(), attention.unsqueeze(0), (adj_mat_thresholded, adj_mat_unthresholded, embed_att, self.dist_adj, mhead_att_mat)
