@@ -38,6 +38,8 @@ torch.backends.cudnn.deterministic = True
 #     San Antonio
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--csv_path', type=str, default='dataset/')
+parser.add_argument('--poi_info_csv_path', type=str, default='dataset/core_poi_info_2019-01-07_2020-06-08.csv')
 parser.add_argument('--train', type=bool, default=True)
 parser.add_argument('--evaluate', type=bool, default=True)
 parser.add_argument('--dataset', type=str, default='Houston') # TODO: select the appropriate city
@@ -81,13 +83,9 @@ if not os.path.exists(result_test_file):
     os.makedirs(result_test_file)
 #data = pd.read_csv(data_file).values
 
-# csv_path = '/storage/dataset/poi_haowen/Houston/Housron_2019-12-30_2020-06-08.csv'
-# csv_path  ='/root/dataset_all/poi_forecast/Houston/Houston_2019-12-30_2020-06-08.csv'
-# csv_path = f'/home/users/arash/datasets/safegraph/weekly_patterns_2019-01-07_2020-06-08_{args.dataset}.csv'
-# poi_info_csv_path = '/home/users/arash/datasets/safegraph/core_poi_info_2019-01-07_2020-06-08.csv'
-
-csv_path = f'/storage/datasets_public/busyness_graph_dataset/weekly_patterns_2019-01-07_2020-06-08_{args.dataset}.csv'
-poi_info_csv_path = '/storage/datasets_public/busyness_graph_dataset/core_poi_info_2019-01-07_2020-06-08.csv'
+# csv_path = f'/storage/datasets_public/busyness_graph_dataset/weekly_patterns_2019-01-07_2020-06-08_{args.dataset}.csv'
+csv_path = f'{args.csv_path}/{args.dataset}.csv'
+poi_info_csv_path = args.poi_info_csv_path
 
 
 # def get_good_poi(df):
