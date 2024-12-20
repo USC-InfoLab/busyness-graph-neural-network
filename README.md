@@ -1,4 +1,4 @@
-# Dynamic Graph Learning for Accurate Point-of-Interest Visit Forecasting
+# Busyness Graph Neural Network (BysGNN): Learning Dynamic Graphs from All Contextual Information for Accurate Point-of-Interest Visit Forecasting
 
 Arash Hajisafi, Haowen Lin, Sina Shaham, Haoji Hu, Maria Despoina Siampou, Yao-Yi Chiang, and Cyrus Shahabi.  
 "Learning dynamic graphs from all contextual information for accurate point-of-interest visit forecasting."  
